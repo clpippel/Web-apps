@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Damkroon Ontwerp & Schaling Tool v1.1.0</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+        h1 { color: #333; margin-bottom: 2px; }
+        .version-tag { font-size: 0.9rem; color: #007bff; font-weight: bold; margin-bottom: 12px; }
+        p { color: #666; margin-top: 0; margin-bottom: 20px; text-align: center; max-width: 600px; }
+        .controls { margin-bottom: 25px; background: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; gap: 20px; align-items: center; flex-wrap: wrap; justify-content: center; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; font-size: 0.9rem; }
+        .control-group input[type="range"] { width: 140px; }
+        .board-preview { background-color: #4a3319; padding: 10px; border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        #board { display: flex; grid-template-columns: none; grid-template-rows: none; background-color: #4a3319; }
+        .cell { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
+        .white-cell { background-color: #f0d9b5; }
+        .black-cell { background-color: #b58863; }
+        .piece-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 2; }
+        .piece-container svg { width: 100%; height: 100%; transition: transform 0.1s; }
+        .piece-container:hover svg { transform: scale(1.05); }
+        .selected svg { transform: scale(1.05); filter: drop-shadow(0 0 4px #4caf50); }
+        .flat-w { fill: #fcf8f2; stroke: #b5b5b5; stroke-width: 3; }
+        .flat-b { fill: #2b2b2b; stroke: #111111; stroke-width: 3; }
+        .grad-w { fill: url(#wGrad); stroke: #b5b5b5; stroke-width: 2; }
+        .grad-b { fill: url(#bGrad); stroke: #111111; stroke-width: 2; }
+        .action-btn { margin-top: 15px; padding: 10px 20px; font-size: 1rem; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: bold; transition: background-color 0.2s; }
+        .action-btn:hover { background-color: #0056b3; }
+        .action-btn:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .legend { margin-top: 15px; font-size: 0.85rem; color: #555; background: #fff; padding: 8px 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        @media (max-width: 650px) { #board { width: 200px !important; height: 200px !important; } }
+    </style>
+</head>
+<body>
+
+    <h1>Damkroon Ontwerp &amp; Schaling Tool</h1>
+    <div class="version-tag">Versie 1.1.0</div>
+    <p>Deze opstelling toont één grote, geïsoleerde damschijf met een geometrische vector-kroon (polygon) om kleurcontrasten, vlakke vullingen en marges live te evalueren.</p>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="margeRange"><strong>Kroon Marge:</strong> <span id="margeVal">15</span>%</label>
+            <input type="range" id="margeRange" min="0" max="35" value="15">
+        </div>
+        <div class="control-group">
+            <label for="wColorSelect"><strong>Kroon Wit (WK Fill):</strong></label>
+            <input type="color" id="wColorSelect" value="#000000">
+        </div>
+        <div class="control-group">
+            <label for="bColorSelect"><strong>Kroon Zwart (BK Fill):</strong></label>
+            <input type="color" id="bColorSelect" value="#ffeb3b">
+        </div>
+        <div class="control-group">
+            <label for="styleSelect"><strong>Schijf Stijl:</strong></label>
+            <select id="styleSelect">
+                <option value="flat">Plat (Wit / Flat Fill)</option>
+                <option value="grad" selected>Verloop (Zwart / Gradient)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="board-preview" id="capture-target">
+        <div id="board"></div>
+    </div>
+    
+    <button class="action-btn" id="copy-btn" onclick="copyBoardToClipboard()">📷 Kopieer Schijf als PNG</button>
+
+    <div class="legend">
+        <strong>Testmodus:</strong> De vector-kroon is opgebouwd via een exact SVG-pad met één egale fill-kleur.
+    </div>
+
+    <svg style="display: none;">
+        <defs>
+            <linearGradient id="wGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#e0e0e0;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="bGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#444444;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+    </svg>
+
+    <script>
+        const boardElement = document.getElementById('board');
+        const SETTINGS = { pSize: 86, wCrownFill: "#000000", bCrownFill: "#ffeb3b" };
+        const CROWN_PATH_DATA = "M15,35 L32,58 L50,25 L68,58 L85,35 L78,78 L22,78 Z";
+        let selectedPiece = null;
+
+        function getPieceSvg(player, isKing) {
+            const margePercent = parseInt(document.getElementById('margeRange').value);
+            const styleMode = document.getElementById('styleSelect').value;
+            const radius = SETTINGS.pSize / 2;
+            let classColor = styleMode === 'flat' ? `flat-${player}` : `grad-${player}`;
+            let crownHtml = '';
+            if (isKing) {
+                const schaal = (100 - (margePercent * 2)) / 100;
+                const shift = 50 * (1 - schaal);
+                const crownColor = player === 'white' ? SETTINGS.wCrownFill : SETTINGS.bCrownFill;
+                crownHtml = `<path d="${CROWN_PATH_DATA}" fill="${crownColor}" style="fill: ${crownColor} !important;" transform="translate(${shift}, ${shift}) scale(${schaal})" />`;
+            }
+            return `<svg viewBox="0 0 100 100" xmlns="http://w3.org" style="pointer-events:none;"><circle cx="50" cy="50" r="${radius}" class="${classColor}" />${crownHtml}</svg>`;
+        }
+
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            boardElement.style.display = 'flex';
+            boardElement.style.justifyContent = 'center';
+            boardElement.style.alignItems = 'center';
+            boardElement.style.width = '300px';
+            boardElement.style.height = '300px';
+
+            const container = document.createElement('div');
+            container.className = 'piece-container';
+            container.style.width = '100%';
+            container.style.height = '100%';
+            
+            const styleMode = document.getElementById('styleSelect').value;
+            const activePlayer = styleMode === 'flat' ? 'white' : 'black';
+            container.innerHTML = getPieceSvg(activePlayer, true);
+            
+            container.addEventListener('click', () => {
+                selectedPiece = !selectedPiece;
+                renderBoard();
+            });
+            if (selectedPiece) { container.classList.add('selected'); }
+            boardElement.appendChild(container);
+        }
+        
+function copyBoardToClipboard() {
+            const target = document.getElementById('capture-target');
+            const button = document.getElementById('copy-btn');
+            button.disabled = true;
+            button.innerText = "⏳ Genereren...";
+
+            window.html2canvasOffline = function(element, options) {
+                return new Promise((resolve) => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 320;
+                    canvas.height = 320;
+                    const ctx = canvas.getContext('2d');
+                    
+                    const styleMode = document.getElementById('styleSelect').value;
+                    const isFlat = styleMode === 'flat';
+                    const marge = parseInt(document.getElementById('margeRange').value);
+                    
+                    // Definieer de 3 exacte doelkleuren in RGB om mee te vergelijken
+                    const colorBg = { r: 0x4A, g: 0x33, b: 0x19 }; // #4a3319
+                    const colorPiece = isFlat ? { r: 0xFC, g: 0xF8, b: 0xF2 } : { r: 0x2B, g: 0x2B, b: 0x2B }; // #fcf8f2 of #2b2b2b
+                    
+                    const hexCrown = isFlat ? document.getElementById('wColorSelect').value : document.getElementById('bColorSelect').value;
+                    const colorCrown = {
+                        r: parseInt(hexCrown.slice(1, 3), 16),
+                        g: parseInt(hexCrown.slice(3, 5), 16),
+                        b: parseInt(hexCrown.slice(5, 7), 16)
+                    };
+
+                    // 1. Teken de onderdelen (hierbij ontstaan tijdelijk de mengkleuren op de randen)
+                    ctx.fillStyle = '#4a3319';
+                    ctx.fillRect(0, 0, 320, 320);
+                    
+                    ctx.fillStyle = isFlat ? '#fcf8f2' : '#2b2b2b';
+                    ctx.beginPath();
+                    ctx.arc(160, 160, 129, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    const schaal = (100 - (marge * 2)) / 100 * 2.58;
+                    const shiftX = Math.round(160 - (50 * schaal));
+                    const shiftY = Math.round(160 - (50 * schaal));
+                    
+                    ctx.fillStyle = hexCrown;
+                    ctx.beginPath();
+                    ctx.moveTo(Math.round(shiftX + 15 * schaal), Math.round(shiftY + 35 * schaal));
+                    ctx.lineTo(Math.round(shiftX + 32 * schaal), Math.round(shiftY + 58 * schaal));
+                    ctx.lineTo(Math.round(shiftX + 50 * schaal), Math.round(shiftY + 25 * schaal));
+                    ctx.lineTo(Math.round(shiftX + 68 * schaal), Math.round(shiftY + 58 * schaal));
+                    ctx.lineTo(Math.round(shiftX + 85 * schaal), Math.round(shiftY + 35 * schaal));
+                    ctx.lineTo(Math.round(shiftX + 78 * schaal), Math.round(shiftY + 78 * schaal));
+                    ctx.lineTo(Math.round(shiftX + 22 * schaal), Math.round(shiftY + 78 * schaal));
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // 2. Trek de rauwe pixelmatrix uit het canvas
+                    const imgData = ctx.getImageData(0, 0, 320, 320);
+                    const pixels = imgData.data;
+                    
+                    // 3. Scan pixel voor pixel en 'prik' tussentinten plat naar de dichtstbijzijnde hoofdkleur
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        const r = pixels[i];
+                        const g = pixels[i+1];
+                        const b = pixels[i+2];
+                        
+                        // Bereken de eucleidische kleurafstand tot de 3 pure doelkleuren
+                        const distBg = Math.hypot(r - colorBg.r, g - colorBg.g, b - colorBg.b);
+                        const distPiece = Math.hypot(r - colorPiece.r, g - colorPiece.g, b - colorPiece.b);
+                        const distCrown = Math.hypot(r - colorCrown.r, g - colorCrown.g, b - colorCrown.b);
+                        
+                        // Bepaal welke van de 3 het dichtstbij ligt en overschrijf de pixel
+                        if (distBg <= distPiece && distBg <= distCrown) {
+                            pixels[i] = colorBg.r; pixels[i+1] = colorBg.g; pixels[i+2] = colorBg.b;
+                        } else if (distPiece <= distBg && distPiece <= distCrown) {
+                            pixels[i] = colorPiece.r; pixels[i+1] = colorPiece.g; pixels[i+2] = colorPiece.b;
+                        } else {
+                            pixels[i] = colorCrown.r; pixels[i+1] = colorCrown.g; pixels[i+2] = colorCrown.b;
+                        }
+                        pixels[i+3] = 255; // Forceer volledige ondoorschijnendheid (geen alpha verloop)
+                    }
+                    
+                    // 4. Duw de gecorrigeerde, 3-kleuren matrix terug op het canvas
+                    ctx.putImageData(imgData, 0, 0);
+                    
+                    setTimeout(() => resolve(canvas), 50);
+                });
+            };
+            
+            window.html2canvasOffline(target, { scale: 1 }).then(canvas => {
+                canvas.toBlob(blob => {
+                    if (!blob) { alert("Er is iets misgegaan bij het genereren."); resetButton(); return; }
+                    navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]).then(() => {
+                        button.innerText = "✅ Gekopieerd!";
+                        button.style.backgroundColor = "#28a745";
+                        setTimeout(resetButton, 2000);
+                    }).catch(err => {
+                        alert("Klembord toegang geweigerd of niet ondersteund.");
+                        resetButton();
+                    });
+                }, 'image/png');
+            }).catch(err => { resetButton(); });
+            function resetButton() { button.disabled = false; button.innerText = "📷 Kopieer Schijf als PNG"; button.style.backgroundColor = "#007bff"; }
+        }
+
+        function updateLiveSettings() {
+            SETTINGS.wCrownFill = document.getElementById('wColorSelect').value;
+            SETTINGS.bCrownFill = document.getElementById('bColorSelect').value;
+            document.getElementById('margeVal').innerText = document.getElementById('margeRange').value;
+            renderBoard();
+        }
+
+        document.getElementById('margeRange').addEventListener('input', updateLiveSettings);
+        document.getElementById('wColorSelect').addEventListener('input', updateLiveSettings);
+        document.getElementById('bColorSelect').addEventListener('input', updateLiveSettings);
+        document.getElementById('styleSelect').addEventListener('change', updateLiveSettings);
+        renderBoard();
+    </script>
+</body>
