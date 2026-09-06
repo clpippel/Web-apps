@@ -1,128 +1,132 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactieve Damsteen</title>
-    <style>
-        body{display:flex;flex-direction:column;justify-content:center;align-items:center;
-             min-height:100vh;background:#f0f0f0;margin:0;font-family:sans-serif;padding:20px;box-sizing:border-box;}
-        .controls,.output-container{background:#fff;padding:15px 25px;border-radius:8px;box-shadow:0 4px 10px rgba(0,0,0,0.05);margin-bottom:20px;display:flex;flex-direction:column;gap:10px;width:380px;box-sizing:border-box;}
-        .control-group{display:flex;justify-content:space-between;align-items:center;
-        display:grid;grid-template-columns:140px 150px 1fr;}
-        .control-group label{font-weight:bold;font-size:14px;}
-        .value-display{font-size:12px;color:#666;text-align:right;}
-        .damsteen-container{width:400px;height:400px;background:#fff;box-shadow:0 4px 10px rgba(0,0,0,0.1);border-radius:8px;margin-bottom:20px;}
-        svg{width:100%;height:100%;display:block;}
-        textarea{width:100%;height:110px;font-family:monospace;font-size:11px;padding:8px;box-sizing:border-box;
-        border:1px solid #ccc;border-radius:4px;resize:none;background:#fafafa;}
-        button{background:darkred;color:#fff;border:none;padding:10px;border-radius:4px;font-weight:bold;
-        cursor:pointer;transition:background 0.2s;}
-        button:hover{background:#660000;}
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactieve Damsteen</title>
+  <style>
+    body{display:flex;flex-direction:column;justify-content:center;align-items:center;
+       min-height:100vh;background:#f0f0f0;margin:0;font-family:sans-serif;padding:20px;box-sizing:border-box;}
+    .controls,.output-container{background:#fff;padding:15px 25px;border-radius:8px;box-shadow:0 4px 10px rgba(0,0,0,0.05);margin-bottom:20px;display:flex;flex-direction:column;gap:10px;width:380px;box-sizing:border-box;}
+    .control-group{display:flex;justify-content:space-between;align-items:center; }
+    .control-group label{font-weight:bold;font-size:14px;}
+    .value-display{font-size:12px;color:#666;text-align:right;}
+    .damsteen-container{width:400px;height:400px;background:#fff;box-shadow:0 4px 10px rgba(0,0,0,0.1);border-radius:8px;margin-bottom:20px;}
+    svg{width:100%;height:100%;display:block;}
+    textarea{width:100%;height:110px;font-family:monospace;font-size:11px;padding:8px;box-sizing:border-box;
+    border:1px solid #ccc;border-radius:4px;resize:none;background:#fafafa;}
+    button{background:darkred;color:#fff;border:none;padding:10px;border-radius:4px;font-weight:bold;
+    cursor:pointer;transition:background 0.2s;}
+    button:hover{background:#660000;}
+  </style>
 </head>
 <body>
 
-    <div class="controls">
-        <div class="control-group"><label for="marginSlider">Marge (Binnen-Buiten):</label><input type="range" id="marginSlider" min="0" max="30" value="3" step="1"><span id="marginVal" class="value-display">3 px</span></div>
-        <div class="control-group"><label for="ratioSlider">Breedte/Hoogte Ratio:</label><input type="range" id="ratioSlider" min="0.2" max="2.5" value="1.2" step="0.05"><span id="ratioVal" class="value-display">1.20</span></div>
-        <div class="control-group"><label for="angleSlider">Hoek zijwand (°):</label><input type="range" id="angleSlider" min="-30" max="30" value="5" step="0.5"><span id="angleVal" class="value-display">+5.0°</span></div>
-        <!-- Waarde geïnitialiseerd op value="3" -->
-        <div class="control-group"><label for="circleStrokeSlider">Lijndikte Cirkel:</label><input type="range" id="circleStrokeSlider" min="1" max="20" value="3" step="1"><span id="circleStrokeVal" class="value-display">3 px</span></div>
-        <!-- Waarde geïnitialiseerd op value="3" -->
-        <div class="control-group"><label for="crownStrokeSlider">Lijndikte Kroon:</label>
-        <input type="range" id="crownStrokeSlider" min="1" max="20" value="3" step="1">
-        <span id="crownStrokeVal" class="value-display">3 px</span></div>
-    </div>
+  <div class="controls">
+    <div class="control-group">
+     <label for="marginSlider">Marge (Binnen-Buiten):</label>
+     <input type="range" id="marginSlider" min="0" max="30" value="3" step="1"><span id="marginVal" class="value-display">3 px</span></div>
+    <div class="control-group"><label for="ratioSlider">Breedte/Hoogte Ratio:</label>
+    <input type="range" id="ratioSlider" min="0.2" max="2.5" value="1.2" step="0.05"><span id="ratioVal" class="value-display">1.20</span></div>
+    <div class="control-group"><label for="angleSlider">Hoek zijwand (°):</label>
+    <input type="range" id="angleSlider" min="-30" max="30" value="5" step="0.5"><span id="angleVal" class="value-display">+5.0°</span></div>
+    <!-- Waarde geïnitialiseerd op value="3" -->
+    <div class="control-group"><label for="circleStrokeSlider">Lijndikte Cirkel:</label>
+    <input type="range" id="circleStrokeSlider" min="1" max="20" value="3" step="1"><span id="circleStrokeVal" class="value-display">3 px</span></div>
+    <!-- Waarde geïnitialiseerd op value="3" -->
+    <div class="control-group"><label for="crownStrokeSlider">Lijndikte Kroon:</label>
+    <input type="range" id="crownStrokeSlider" min="1" max="20" value="3" step="1">
+    <span id="crownStrokeVal" class="value-display">3 px</span></div>
+  </div>
 
-    <div class="damsteen-container">
-        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <circle id="buitencirkel" cx="50" cy="50" r="49" fill="none" stroke="darkred" stroke-width="1" />
-            <circle id="binnenCirkel" cx="50" cy="50" r="48" fill="none" stroke="#ccc" stroke-width="0.2" stroke-dasharray="1" />
-            <polygon id="kroon" points="" fill="yellow" stroke="darkred" stroke-width="1.5" stroke-linejoin="round" />
-        </svg>
-    </div>
+  <div class="damsteen-container">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle id="buitencirkel" cx="50" cy="50" r="49" fill="none" stroke="darkred" stroke-width="1" />
+      <circle id="binnenCirkel" cx="50" cy="50" r="48" fill="none" stroke="#ccc" stroke-width="0.2" stroke-dasharray="1" />
+      <polygon id="kroon" points="" fill="yellow" stroke="darkred" stroke-width="1.5" stroke-linejoin="round" />
+    </svg>
+  </div>
 
-    <div class="output-container">
-        <label for="svgCodeOutput">Gegenereerde SVG Definitie:</label>
-        <textarea id="svgCodeOutput" readonly></textarea>
-        <button id="copyBtn">Kopieer SVG Code</button>
-    </div>
+  <div class="output-container">
+    <label for="svgCodeOutput">Gegenereerde SVG Definitie:</label>
+    <textarea id="svgCodeOutput" readonly></textarea>
+    <button id="copyBtn">Kopieer SVG Code</button>
+  </div>
 
-    <script>
-        const marginSlider = document.getElementById('marginSlider');
-        const ratioSlider = document.getElementById('ratioSlider');
-        const angleSlider = document.getElementById('angleSlider');
-        const circleStrokeSlider = document.getElementById('circleStrokeSlider');
-        const crownStrokeSlider = document.getElementById('crownStrokeSlider');
-        
-        const marginVal = document.getElementById('marginVal');
-        const ratioVal = document.getElementById('ratioVal');
-        const angleVal = document.getElementById('angleVal');
-        const circleStrokeVal = document.getElementById('circleStrokeVal');
-        const crownStrokeVal = document.getElementById('crownStrokeVal');
-        
-        const buitencirkel = document.getElementById('buitencirkel');
-        const binnenCirkelVisueel = document.getElementById('binnenCirkel');
-        const kroon = document.getElementById('kroon');
-        const svgCodeOutput = document.getElementById('svgCodeOutput');
-        const copyBtn = document.getElementById('copyBtn');
+  <script>
+    const marginSlider = document.getElementById('marginSlider');
+    const ratioSlider = document.getElementById('ratioSlider');
+    const angleSlider = document.getElementById('angleSlider');
+    const circleStrokeSlider = document.getElementById('circleStrokeSlider');
+    const crownStrokeSlider = document.getElementById('crownStrokeSlider');
+    
+    const marginVal = document.getElementById('marginVal');
+    const ratioVal = document.getElementById('ratioVal');
+    const angleVal = document.getElementById('angleVal');
+    const circleStrokeVal = document.getElementById('circleStrokeVal');
+    const crownStrokeVal = document.getElementById('crownStrokeVal');
+    
+    const buitencirkel = document.getElementById('buitencirkel');
+    const binnenCirkelVisueel = document.getElementById('binnenCirkel');
+    const kroon = document.getElementById('kroon');
+    const svgCodeOutput = document.getElementById('svgCodeOutput');
+    const copyBtn = document.getElementById('copyBtn');
 
-        function updateCrown() {
-            const pixelMargin = parseFloat(marginSlider.value);
-            const ratio = parseFloat(ratioSlider.value);
-            const angleDeg = parseFloat(angleSlider.value);
-            const circleStrokePx = parseFloat(circleStrokeSlider.value);
-            const crownStrokePx = parseFloat(crownStrokeSlider.value);
-            
-            marginVal.textContent = pixelMargin + ' px';
-            ratioVal.textContent = ratio.toFixed(2);
-            angleVal.textContent = (angleDeg > 0 ? '+' : '') + angleDeg.toFixed(1) + '°';
-            circleStrokeVal.textContent = circleStrokePx + ' px';
-            crownStrokeVal.textContent = crownStrokePx + ' px';
-            
-            const cx = 50, cy = 50;
-            const circleStrokeUnits = circleStrokePx / 4;
-            const crownStrokeUnits = crownStrokePx / 4;
-            
-            const rBuiten = 50 - (circleStrokeUnits / 2);
-            buitencirkel.setAttribute('r', rBuiten);
-            buitencirkel.setAttribute('stroke-width', circleStrokeUnits);
-            
-            const svgMarginUnits = pixelMargin / 4;
-            const rBinnen = Math.max(5, rBuiten - svgMarginUnits);
-            binnenCirkelVisueel.setAttribute('r', rBinnen);
+    function updateCrown() {
+      const pixelMargin = parseFloat(marginSlider.value);
+      const ratio = parseFloat(ratioSlider.value);
+      const angleDeg = parseFloat(angleSlider.value);
+      const circleStrokePx = parseFloat(circleStrokeSlider.value);
+      const crownStrokePx = parseFloat(crownStrokeSlider.value);
+      
+      marginVal.textContent = pixelMargin + ' px';
+      ratioVal.textContent = ratio.toFixed(2);
+      angleVal.textContent = (angleDeg > 0 ? '+' : '') + angleDeg.toFixed(1) + '°';
+      circleStrokeVal.textContent = circleStrokePx + ' px';
+      crownStrokeVal.textContent = crownStrokePx + ' px';
+      
+      const cx = 50, cy = 50;
+      const circleStrokeUnits = circleStrokePx / 4;
+      const crownStrokeUnits = crownStrokePx / 4;
+      
+      const rBuiten = 50 - (circleStrokeUnits / 2);
+      buitencirkel.setAttribute('r', rBuiten);
+      buitencirkel.setAttribute('stroke-width', circleStrokeUnits);
+      
+      const svgMarginUnits = pixelMargin / 4;
+      const rBinnen = Math.max(5, rBuiten - svgMarginUnits);
+      binnenCirkelVisueel.setAttribute('r', rBinnen);
 
-            const yOffset = Math.sqrt(Math.pow(rBinnen, 2) / (Math.pow(ratio, 2) + 1));
-            const halfWidth = ratio * yOffset;
+      const yOffset = Math.sqrt(Math.pow(rBinnen, 2) / (Math.pow(ratio, 2) + 1));
+      const halfWidth = ratio * yOffset;
 
-            const yTop = cy - yOffset, yBasis = cy + yOffset, yDal = cy;
-            const xTopMidden = cx, xTopLinks = cx - halfWidth, xTopRechts = cx + halfWidth;
+      const yTop = cy - yOffset, yBasis = cy + yOffset, yDal = cy;
+      const xTopMidden = cx, xTopLinks = cx - halfWidth, xTopRechts = cx + halfWidth;
 
-            const hoekRad = angleDeg * Math.PI / 180;
-            const xAfwijking = (yBasis - yTop) * Math.tan(hoekRad);
+      const hoekRad = angleDeg * Math.PI / 180;
+      const xAfwijking = (yBasis - yTop) * Math.tan(hoekRad);
 
-            const xBasisLinks = xTopLinks - xAfwijking, xBasisRechts = xTopRechts + xAfwijking;
-            const xDalLinks = xTopLinks + (xTopMidden - xTopLinks) / 2, xDalRechts = xTopMidden + (xTopRechts - xTopMidden) / 2;
+      const xBasisLinks = xTopLinks - xAfwijking, xBasisRechts = xTopRechts + xAfwijking;
+      const xDalLinks = xTopLinks + (xTopMidden - xTopLinks) / 2, xDalRechts = xTopMidden + (xTopRechts - xTopMidden) / 2;
 
-            const pointsStr = `${Math.round(xBasisLinks)},${Math.round(yBasis)} ${Math.round(xTopLinks)},${Math.round(yTop)} ${Math.round(xDalLinks)},${Math.round(yDal)} ${Math.round(xTopMidden)},${Math.round(yTop)} ${Math.round(xDalRechts)},${Math.round(yDal)} ${Math.round(xTopRechts)},${Math.round(yTop)} ${Math.round(xBasisRechts)},${Math.round(yBasis)}`;
+      const pointsStr = `${Math.round(xBasisLinks)},${Math.round(yBasis)} ${Math.round(xTopLinks)},${Math.round(yTop)} ${Math.round(xDalLinks)},${Math.round(yDal)} ${Math.round(xTopMidden)},${Math.round(yTop)} ${Math.round(xDalRechts)},${Math.round(yDal)} ${Math.round(xTopRechts)},${Math.round(yTop)} ${Math.round(xBasisRechts)},${Math.round(yBasis)}`;
 
-            kroon.setAttribute('points', pointsStr);
-            kroon.setAttribute('stroke-width', crownStrokeUnits);
+      kroon.setAttribute('points', pointsStr);
+      kroon.setAttribute('stroke-width', crownStrokeUnits);
 
-            svgCodeOutput.value = `<svg width="100%" height="100%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">\n  <circle cx="50" cy="50" r="${rBuiten.toFixed(2)}" fill="none" stroke="darkred" stroke-width="${circleStrokeUnits.toFixed(2)}" />\n  <polygon points="${pointsStr}" fill="yellow" stroke="darkred" stroke-width="${crownStrokeUnits.toFixed(2)}" stroke-linejoin="round" />\n</svg>`;
-        }
+      svgCodeOutput.value = `<svg width="100%" height="100%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">\n  <circle cx="50" cy="50" r="${rBuiten.toFixed(2)}" fill="none" stroke="darkred" stroke-width="${circleStrokeUnits.toFixed(2)}" />\n  <polygon points="${pointsStr}" fill="yellow" stroke="darkred" stroke-width="${crownStrokeUnits.toFixed(2)}" stroke-linejoin="round" />\n</svg>`;
+    }
 
-        copyBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(svgCodeOutput.value).then(() => {
-                const originalText = copyBtn.textContent;
-                copyBtn.textContent = 'Gekopieerd!'; copyBtn.style.background = 'green';
-                setTimeout(() => { copyBtn.textContent = originalText; copyBtn.style.background = 'darkred'; }, 1500);
-            }).catch(() => { svgCodeOutput.select(); document.execCommand('copy'); });
-        });
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(svgCodeOutput.value).then(() => {
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = 'Gekopieerd!'; copyBtn.style.background = 'green';
+        setTimeout(() => { copyBtn.textContent = originalText; copyBtn.style.background = 'darkred'; }, 1500);
+      }).catch(() => { svgCodeOutput.select(); document.execCommand('copy'); });
+    });
 
-        [marginSlider, ratioSlider, angleSlider, circleStrokeSlider, crownStrokeSlider].forEach(s => s.addEventListener('input', updateCrown));
-        updateCrown();
-    </script>
+    [marginSlider, ratioSlider, angleSlider, circleStrokeSlider, crownStrokeSlider].forEach(s => s.addEventListener('input', updateCrown));
+    updateCrown();
+  </script>
 </body>
 </html>
