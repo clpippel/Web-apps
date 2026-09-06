@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--
+      ===========================================================================
+      PROGRAMMANAAM : Clipboard Security & FEN Core Diagnostic (Dambord Edition)
+      VERSIE        : 1.4.0
+      DOEL          : Ad-hoc testprogramma voor het analyseren van browser-
+                      beveiligingsrestricties rondom de async Clipboard API.
+                      Verifieert de lees- en schrijfrechten (readText/writeText)
+                      binnen verschillende browser-sandboxes via FEN-strings.
+      ===========================================================================
+    -->
+    <meta name="version" content="1.4.0">
+    <title>Clipboard Security & FEN Core Diagnostic v1.4.0</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px 0; box-sizing: border-box; }
+        h1 { color: #333; margin-bottom: 2px; }
+        .version-tag { font-size: 0.85rem; color: #888; font-weight: 600; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
+        #status { font-size: 1.2rem; margin-bottom: 20px; font-weight: 700; color: #555; }
+        #board { display: grid; grid-template-columns: repeat(10, 60px); grid-template-rows: repeat(10, 60px); border: 6px solid #4a2e1b; box-shadow: 0 10px 25px rgba(0,0,0,.3); border-radius: 4px; }
+        .square { width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .white-square { background-color: #f0d9b5; }
+        .black-square { background-color: #b58863; }
+        .piece { width: 45px; height: 45px; border-radius: 50%; box-shadow: inset 0 0 8px rgba(0,0,0,.5), 0 4px 6px rgba(0,0,0,.3); position: relative; z-index: 10; }
+        .white-piece { background-color: #fff; border: 2px solid #ccc; }
+        .black-piece { background-color: #222; border: 2px solid #111; }
+        .king::after { content: '👑'; font-size: 22px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .controls { margin-top: 20px; display: flex; gap: 12px; }
+        button { padding: 12px 24px; font-size: 1rem; font-weight: 700; color: #fff; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,.1); transition: background .2s, transform .1s; }
+        button:active { transform: scale(.98); }
+        .btn-reset { background-color: #4a2e1b; }
+        .btn-reset:hover { background-color: #5d3a22; }
+        .btn-import { background-color: #007bff; }
+        .btn-import:hover { background-color: #0056b3; }
+        .btn-export { background-color: #28a745; }
+        .btn-export:hover { background-color: #218838; }
+        .diagnostic-log { margin-top: 20px; width: 600px; background: #272822; color: #f8f8f2; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); height: 120px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <h1>Clipboard Security & FEN Core Diagnostic</h1>
+    <div class="version-tag">Versie 1.4.0</div>
+    <div id="status">Wit is aan de beurt</div>
+    
+    <div id="board"></div>
+    
+    <div class="controls">
+        <button class="btn-reset" onclick="initBoard(true)">Beginstelling</button>
+        <button class="btn-import" onclick="importeerFEN()">Importeer FEN</button>
+        <button class="btn-export" onclick="exporteerFEN()">Exporteer FEN</button>
+    </div>
+
+    <div class="diagnostic-log" id="log">Systeem geladen. Klik op een knop om te testen...</div>
+
+    <script>
+        /*
+         * =======================================================================
+         * GLOBALE VARIABELEN & GLOBAAL STATE MANAGEMENT
+         * =======================================================================
+         */
+        const board = document.getElementById('board');
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        let gameState = []; // 2D matrix die de 10x10 bordbezetting bijhoudt
+        let turn = 'white'; // Houdt bij welke kleur ('white' of 'black') aan zet is
+
+        /*
+         * =======================================================================
+         * DIAGNOSTISCHE LOGGER
+         * Schrijft realtime status- en foutmeldingen naar de visuele consolebox.
+         * Handig om SecurityErrors of NotAllowedErrors op te vangen.
+         * =======================================================================
+         */
+        function logConsole(msg, isError = false) {
+            const time = new Date().toLocaleTimeString();
+            const color = isError ? '#ff6b6b' : '#a6e22e';
+            logDiv.innerHTML += `\n<span style="color: ${color}">[${time}] ${msg}</span>`;
+            logDiv.scrollTop = logDiv.scrollHeight; // Forceert automatische scroll naar beneden
+            console.log(`[${time}] ${msg}`);
+        }
+
+        /*
+         * =======================================================================
+         * BORD EN GRID GENERATIE
+         * Maakt de DOM-structuur leeg en bouwt een nieuw 10x10 grid op met
+         * afwisselend witte en donkere velden op basis van de grid-coördinaten.
+         * =======================================================================
+         */
+        function createEmptyBoard() {
+            board.innerHTML = '';
+            gameState = Array(10).fill(null).map(() => Array(10).fill(null));
+
+            for (let r = 0; r < 10; r++) {
+                for (let c = 0; c < 10; c++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square');
+                    const isBlackSquare = (r + c) % 2 === 1;
+                    square.classList.add(isBlackSquare ? 'black-square' : 'white-square');
+                    square.dataset.row = r;
+                    square.dataset.col = c;
+                    board.appendChild(square);
+                }
+            }
+        }
+
+        /*
+         * =======================================================================
+         * INITIALISATIE BEGINSTELLING
+         * Vult de achterliggende gameState-matrix met de officiële beginopstelling
+         * van 20 witte en 20 zwarte schijven op de donkere velden.
+         * =======================================================================
+         */
+        function initBoard(isManualReset = false) {
+            createEmptyBoard();
+            turn = 'white';
+            statusDiv.textContent = "Wit is aan de beurt";
+
+            for (let r = 0; r < 10; r++) {
+                for (let c = 0; c < 10; c++) {
+                    if ((r + c) % 2 === 1) {
+                        if (r < 4) gameState[r][c] = { color: 'black', king: false };
+                        if (r > 5) gameState[r][c] = { color: 'white', king: false };
+                    }
+                }
+            }
+            renderPieces();
+            if (isManualReset) {
+                logConsole("Beginstelling handmatig hersteld.");
+            } else {
+                logConsole("Beginstelling succesvol geïnitialiseerd.");
+            }
+        }
+
+        /*
+         * =======================================================================
+         * RENDER LOGICA (DOM UPDATE)
+         * Synchroniseert de visuele weergave (HTML-elementen) met de actuele 
+         * data in de interne `gameState` matrix. Tekent schijven en dammen.
+         * =======================================================================
+         */
+        function renderPieces() {
+            const squares = board.querySelectorAll('.square');
+            squares.forEach(sq => {
+                const existingPiece = sq.querySelector('.piece');
+                if (existingPiece) existingPiece.remove();
+                
+                const r = parseInt(sq.dataset.row);
+                const c = parseInt(sq.dataset.col);
+                const pieceData = gameState[r][c];
+                
+                if (pieceData) {
+                    const piece = document.createElement('div');
+                    piece.classList.add('piece');
+                    piece.classList.add(pieceData.color === 'white' ? 'white-piece' : 'black-piece');
+                    if (pieceData.king) piece.classList.add('king');
+                    sq.appendChild(piece);
+                }
+            });
+        }
+
+        /*
+         * =======================================================================
+         * BEVEILIGINGSTEST 1 - IMPORTEREN VAN KLEMBORD (Read Access)
+         * Roept `navigator.clipboard.readText()` aan. Vraagt in veel browsers om
+         * actieve gebruikerstoestemming via een permissie-prompt.
+         * Bevat een failover prompt voor sandboxen/omgevingen zonder API-toegang.
+         * =======================================================================
+         */
+         
+         /*
+/*
+
+ /*
+         * =======================================================================
+         * BEVEILIGINGSTEST 1 - IMPORTEREN VAN KLEMBORD (Read Access)
+         * Roept navigator.clipboard.readText() aan. Forceert eerst window.focus()
+         * om focus-gerelateerde sandbox-weigeringen in browsers te omzeilen.
+         * =======================================================================
+         */
+        async function importeerFEN() {
+            window.focus(); // Voorkomt permissie-fouten door pagina-focus te forceren
+            logConsole("Testen: navigator.clipboard.readText()...");
+            
+            if (!navigator.clipboard) {
+                logConsole("FOUT: navigator.clipboard is undefined. Sandbox-restrictie of geen HTTPS/localhost!", true);
+                alert("Klembord API is niet beschikbaar in deze browser-sandbox (HTTPS vereist).");
+                return;
+            }
+            try {
+                const text = await navigator.clipboard.readText();
+                logConsole("Klembord succesvol uitgelezen.");
+                if (text && text.trim() !== "") {
+                    parseFEN(text.trim());
+                } else {
+                    logConsole("WAARSCHUWING: Klembord is leeg.", true);
+                    alert("Klembord is leeg.");
+                }
+            } catch (err) {
+                logConsole(`BEVEILIGINGSFOUT: ${err.name} - ${err.message}`, true);
+                alert(`Beveiliging Geweigerd!\nFout: ${err.name}\nMelding: ${err.message}`);
+            }
+        }
+
+        /*
+         * =======================================================================
+         * BEVEILIGINGSTEST 2 - EXPORTEREN NAAR KLEMBORD (Write Access)
+         * Genereert de FEN-string en schrijft deze weg naar het systeemklembord.
+         * =======================================================================
+         */
+        async function exporteerFEN() {
+            window.focus();
+            logConsole("Testen: navigator.clipboard.writeText()...");
+            if (!navigator.clipboard) return;
+
+            let whiteList = [];
+            let blackList = [];
+            let fieldCounter = 1;
+
+            for (let r = 0; r < 10; r++) {
+                for (let c = 0; c < 10; c++) {
+                    if ((r + c) % 2 === 1) {
+                        const piece = gameState[r][c];
+                        if (piece) {
+                            const prefix = piece.king ? "K" : "";
+                            if (piece.color === 'white') whiteList.push(prefix + fieldCounter);
+                            if (piece.color === 'black') blackList.push(prefix + fieldCounter);
+                        }
+                        fieldCounter++;
+                    }
+                }
+            }
+            
+            const prefix = turn === 'white' ? 'W:' : 'B:';
+            const volledigeFEN = '[FEN "' + prefix + 'W' + whiteList.join(',') + ':B' + blackList.join(',') + '"]';
+
+            try {
+                await navigator.clipboard.writeText(volledigeFEN);
+                logConsole(`Succesvol naar klembord geschreven!`);
+                alert(`Succesvol naar klembord geschreven:\n\n${volledigeFEN}`);
+            } catch (err) {
+                logConsole(`SCHRIJFFOUT: ${err.message}`, true);
+                alert(`Klembord schrijffout: ${err.message}`);
+            }
+        }
+
+        /*
+         * =======================================================================
+         * 3. FEN INTERPRETATIE (Strikte numerieke parser - Gecorrigeerd)
+         * Ontleedt de PDN-notatie. De Array-index [1] herstelt de string-functionaliteit.
+         * =======================================================================
+         */
+        function parseFEN(fenString) {
+            createEmptyBoard();
+            logConsole(`Start parsing van string: "${fenString}"`);
+
+            let pureFen = fenString;
+            // Ontdoet de string van haken en aanhalingstekens en pakt het tweede element [1]
+            if (fenString.startsWith('[') && fenString.includes('"')) {
+                const parts = fenString.split('"');
+                if (parts.length > 1) pureFen = parts[1]; // FIX: Gebruik index [1] om de string te extraheren
+            }
+
+            // Interpreteer de actieve beurt (W: of B:)
+            if (pureFen.charAt(1) === ':') {
+                turn = pureFen.charAt(0).toUpperCase() === 'B' ? 'black' : 'white';
+                statusDiv.textContent = turn === 'white' ? "Wit is aan de beurt" : "Zwart is aan de beurt";
+                pureFen = pureFen.substring(2);
+            }
+
+            const sections = pureFen.split(':');
+            let whitePieces = "";
+            let blackPieces = "";
+
+            sections.forEach(sec => {
+                if (sec.toUpperCase().startsWith('W')) whitePieces = sec.substring(1);
+                if (sec.toUpperCase().startsWith('B')) blackPieces = sec.substring(1);
+            });
+
+            /*
+             * Interne hulpmethode voor het mappen van de velden (1-50) naar het 10x10 grid
+             */
+            function placePieces(piecesString, color) {
+                if (!piecesString || piecesString.trim() === "") return;
+                const fields = piecesString.split(',');
+                
+                fields.forEach(field => {
+                    let isKing = false;
+                    let cleanField = field.trim();
+                    
+                    if (cleanField.toUpperCase().startsWith('K')) {
+                        isKing = true;
+                        cleanField = cleanField.substring(1);
+                    }
+                    
+                    const fieldNum = parseInt(cleanField);
+                    if (isNaN(fieldNum) || fieldNum < 1 || fieldNum > 50) return;
+
+                    // Converteer damnummer (1-50) terug naar grid rij en kolom (10x10)
+                    let currentField = 1;
+                    for (let r = 0; r < 10; r++) {
+                        for (let c = 0; c < 10; c++) {
+                            if ((r + c) % 2 === 1) {
+                                if (currentField === fieldNum) {
+                                    gameState[r][c] = { color: color, king: isKing };
+                                    return;
+                                }
+                                currentField++;
+                            }
+                        }
+                    }
+                });
+            }
+
+            placePieces(whitePieces, 'white');
+            placePieces(blackPieces, 'black');
+            
+            renderPieces();
+            logConsole("Bord succesvol bijgewerkt op basis van FEN string.");
+        }
+
+        // Start direct op met de beginstelling bij het laden van de pagina
+        initBoard(false);
+    </script>
+</body>
+</html>
