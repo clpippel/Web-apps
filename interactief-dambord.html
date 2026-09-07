@@ -421,7 +421,13 @@ const COLOR_PALETTES = {
   function executeFenImport() {
     const field = document.getElementById('fen-input-field'); if (!field) return;
     const fen = field.value.trim(); if (!fen) { alert("Plak eerst een FEN-code in het invoerveld."); return; }
-    let maxFieldNum = 0; const cleanFen = fen.replace(/\s+/g, ''); const parts = cleanFen.toUpperCase().split(':');
+    let maxFieldNum = 0; const cleanFen = fen.replace(/\s+/g, '');
+    
+    // Als de string verpakt is in [FEN"..."], pak dan alleen de inhoud tussen de quotes
+    const match = cleanFen.match(/"([^"]+)"/);
+    if (match) { cleanFen = match[1]; }
+
+    const parts = cleanFen.toUpperCase().split(':');
     let whiteList = [], blackList = [];
     parts.forEach(part => {
       if (part.startsWith('W') && part.length > 1) { whiteList = part.substring(1).split(','); }
