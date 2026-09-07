@@ -198,7 +198,7 @@ const COLOR_PALETTES = {
   function getBPiece() {
     const useFlat = document.querySelector('input[name="style-select"]:checked').value === 'flat';
     const radius = SETTINGS.pSize / 2;
-    return `<div class="piece" data-type="B"><svg viewBox="0 0 100 100" xmlns="http://w3.org" style="pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 'flat-b' : 'grad-b'}" /></svg></div>`;
+    return `<div class="piece" data-type="B"><svg viewBox="0 0 100 100" xmlns="http://w3.org/2000/svg" style="pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 'flat-b' : 'grad-b'}" /></svg></div>`;
   }
   
   function getBKing() {
@@ -206,13 +206,13 @@ const COLOR_PALETTES = {
     const radius = SETTINGS.pSize / 2;
     const schaal = (100 - (CROWN_MARGE_PERCENT * 2)) / 100;
     const shift = 50 * (1 - schaal);
-    return `<div class="piece" data-type="BK"><svg viewBox="0 0 100 100" xmlns="http://w3.org" style="pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 'flat-b' : 'grad-b'}" /><path d="${CROWN_PATH_DATA}" fill="${SETTINGS.bCrownFill}" transform="translate(${shift}, ${shift}) scale(${schaal})" /></svg></div>`;
+    return `<div class="piece" data-type="BK"><svg viewBox="0 0 100 100" xmlns="http://w3.org/2000/svg" style="pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 'flat-b' : 'grad-b'}" /><path d="${CROWN_PATH_DATA}" fill="${SETTINGS.bCrownFill}" transform="translate(${shift}, ${shift}) scale(${schaal})" /></svg></div>`;
   }
   
   function getWPiece() {
     const useFlat = document.querySelector('input[name="style-select"]:checked').value === 'flat';
     const radius = SETTINGS.pSize / 2;
-    return `<div class="piece" data-type="W"><svg viewBox="0 0 100 100" xmlns="http://w3.org" style="pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 'flat-w' : 'grad-w'}" /></svg></div>`;
+    return `<div class="piece" data-type="W"><svg viewBox="0 0 100 100" xmlns="http://w3.org/2000/svg" style="pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 'flat-w' : 'grad-w'}" /></svg></div>`;
   }
   
   function getWKing() {
@@ -220,7 +220,7 @@ const COLOR_PALETTES = {
     const radius = SETTINGS.pSize / 2;
     const schaal = (100 - (CROWN_MARGE_PERCENT * 2)) / 100;
     const shift = 50 * (1 - schaal);
-    return `<div class="piece" data-type="WK"><svg viewBox="0 0 100 100" xmlns="http://w3.org" style="pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 'flat-w' : 'grad-w'}" /><path d="${CROWN_PATH_DATA}" fill="${SETTINGS.wCrownFill}" transform="translate(${shift}, ${shift}) scale(${schaal})" /></svg></div>`;
+    return `<div class="piece" data-type="WK"><svg viewBox="0 0 100 100" xmlns="http://w3.org/2000/svg" style="pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 'flat-w' : 'grad-w'}" /><path d="${CROWN_PATH_DATA}" fill="${SETTINGS.wCrownFill}" transform="translate(${shift}, ${shift}) scale(${schaal})" /></svg></div>`;
   }
 
   function initToolPanel() {
