@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<!--
+(©) as Wikipedia, Creative Commons Naamsvermelding-GelijkDelen-licentie.
+  ======================================================================
+  September 2026, CLP, co-creatie met Google Search AI.
+  Interactieve Diagram maker, voor 8x8, 10x10 en 12x12
+
+  Interface met actieve tool-selectie boven het bord.
+  Klik op een tool (Schijf, Dam of Prullenbak) en klik op het bord.
+  Als een veld een stuk bevat, wordt dit bij een klik direct verwijderd.
+  Als een schijf op de damlijn wordt gezet, dan wordt de schijf een dam.
+  Themakeuze via deep kopie uit de 4 beschikbare paletten.
+  Inclusief directe export naar PNG én kopiëren naar klembord.
+  =======================================================================
+-->
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interactief Dambord</title>
+  <style>
+    x             { outline: thin dotted red; }                   /* Diagnostics (*) */
+    html, body    { background-color: #2c3e50; color: white; }
+    main          { display: grid; grid-column: span 1; row-gap: 1em; align-content: center;}
+    main > div    { max-width: fit-content; margin-inline: auto;}
+    .center       { text-align: center; }
+    .controls      { margin-bottom: 12px;
+                     display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; background-color: darkslategrey; }
+    .editor-panel { background-color: #3e2732; margin: 0 auto; }
+   .btn,                                                                              /* Button */
+   .select-box    { height: 32px; box-sizing: border-box;
+                    background-color: var(--bg-controls, #3e2723); color: #fff;
+                    border: none; padding: 6px 12px; font-size: 14px; font-weight: bold;
+                    cursor: pointer; height: 32px; xSAbox-sizing: border-box; }
+    .board-container
+                  { padding: 0; background-color: grey;  }
+     board        { display: grid; border: var(--board-border-width, 2px) solid var(--board-border, #f0d9b5); }
+  </style>
+</head>
+<body>
+
+<header class = "center"><h1>Interactief Dambord</h1></header>
+<main>
+<div class="controls">
+  <select id="size-select" class="select-box">
+    <option value="8">Bord: 8 x 8</option>
+    <option value="10" selected>Bord: 10 x 10</option>
+    <option value="12">Bord: 12 x 12</option>
+  </select>
+
+  <div style="position: relative; display: inline-block;">
+    <button class="btn" id="format-menu-btn" type="button">📐 Geometrie</button>
+    <div id="format-menu-content" style="display: none; position: absolute; top: 34px; left: 0; ; border: 2px ; border-radius: 6px; padding: 12px; z-index: 1000; width: auto; white-space: nowrap; box-shadow: 0 4px 15px ; text-align: left;">
+      <div style="display: flex; align-items: center; margin-bottom: 10px; width: 100%;">
+        <label style="font-size: 12px; font-weight: bold; color: white; width: 120px;">Veld (px):</label>
+        <input type="text" id="tilesize-input" class="select-box" value="32" style="width: 45px; text-align: center;" inputmode="numeric" pattern="[0-9]*">
+      </div>
+
+      <div style="display: flex; align-items: center; margin-bottom: 10px; width: 100%;">
+        <label style="font-size: 12px; font-weight: bold; color: white; width: 120px;">Schijf (%):</label>
+        <input type="text" id="piecesize-input" class="select-box" value="84" style="width: 45px; text-align: center;" inputmode="numeric" pattern="[0-9]*"></div>
+        
+      <div style="display: flex; align-items: center; margin-bottom: 12px; width: 100%;">
+        <label style="font-size: 12px; font-weight: bold; color: white; width: 120px;">Bordrand (px):</label>
+        <input type="text" id="boardborder-input" class="select-box" value="2" style="width: 45px; text-align: center;" inputmode="numeric" pattern="[0-9]*"></div>
+
+      <div style="display: flex; align-items: center; width: 100%;">
+        <label style="font-size: 12px; font-weight: bold; color: white; width: 120px;">Kleur rand:</label>
+        <div style="display: inline-flex; gap: 4px;">
+          <button type="button" data-border="dark" style="height: 24px; padding: 2px 8px; font-size: 11px;  border: 1px solid ;">Donker</button>
+          <button type="button" data-border="dark" style="height: 24px; padding: 2px 8px; font-size: 11px; ">Donker</button>
+        </div>
+      </div>
+        
+      <div style="border-top: 1px solid rgba(255,255,255,0.2); margin-top: 10px;">  <h1>hallo daar</h1> </div>
+    </div>
+  </div>
+
+  <button class="btn" id="flip-btn">🔄 Flip bord</button>
+  <select id="theme-select" class="select-box">
+    <option value="classic" selected>🎨 DCIJ</option>
+    <option value="grayscale">🎨 Scan</option>
+    <option value="AIclassic">🎨 AI Klassiek</option>
+    <option value="AIgrayscale">🎨 AI Grijs</option>
+  </select>
+  <button class="btn btn-success" id="reset-btn">🏁 Beginstand</button>
+  <button class="btn btn-danger" id="clear-btn">🗑️ Leegmaken</button>
+  <button class="btn btn-save" id="save-btn">💾 Save als PNG</button>
+  <button class="btn btn-save" id="copy-btn">📋 Copy als PNG</button>
+  <button class="btn btn-save" id="export-fen-btn">📋 Exporteer FEN</button>
+  <button class="btn btn-save" id="import-fen-btn">📥 Importeer FEN</button>
+</div>
+<div id = "FEN-text" style="width: fit-content">
+  <input type="text" id="fen-input-field" class="select-box" placeholder="Plak hier je FEN-code..."
+         style="width: 300px; ">
+</div>
+<div id="tool-panel">
+Tool Panel
+  <div class="tool-option active" data-tool="B" title="Zwarte schijf" id="tool-b"></div>
+  <div class="tool-option" data-tool="BK" title="Zwarte dam" id="tool-bk"></div>
+  <div class="tool-option" data-tool="W" title="Witte schijf" id="tool-w"></div>
+  <div class="tool-option" data-tool="WK" title="Witte dam" id="tool-wk"></div>
+</div>
+
+<div class="board-container" id="board-holder">
+  <div class="board" id="draughts-board">
+    <div>Het bord is hier</div>
+  </div>
+</div>
+
+<div class = "editor-panel">
+Weergave schijven<p>
+<label class="radio-group"><input type="radio" name="style-select" value="gradient" checked> D3</label>
+<label class="radio-group"><input type="radio" name="style-select" value="flat"> D2</label>
+</div>
+
+</main>
+
+<script>
+// ======================================================================
+// ENGE CENTRALE INSTELLING VOOR DE KROONMARGE (OP 1 ENGE PLAATS)
+// ======================================================================
+// const CROWN_PATH_DATA = "M 16,61 L 14,39 L 32,50 L 50,39 L 68,50 L 86,39 L 84,61 Z";
+const CROWN_PATH_DATA = "M 18,72 L 16,36 L 33,53 L 50,23 L 67,53 L 84,36 L 82,72 Z";
+const CROWN_MARGE_PERCENT = 5; // Ruimte in % tussen de schijfrand en de kroon (Bijv. 5)
+// ======================================================================
+
+const colorsApp  = {
+      bgMain: "#2c3e50", bgPanel: "#f0d9b5", bgControls: "#3e2723", boardBorder: "#f0d9b5",
+      btnDanger: "#c62828", btnSuccess: "#2e7d32", btnSave: "#1565c0", btnGray: "#78909c"
+}
+
+const COLOR_PALETTES = {
+    classic: {
+      tLight: "#e4e4e4", tDark: "#8c8c8c",  tileHover: "#baca44", 
+      wInner: "#ffffff", wOuter: "#e0e0e0", wCrownFill: "#d4aa09",
+      bInner: "#d95353", bOuter: "#b53737", bCrownFill: "#d4aa09",
+      pSize : 75 },
+          
+    grayscale: {
+      bgMain: "#333333", bgPanel: "#e0e0e0", bgControls: "#424242", boardBorder: "#e0e0e0",
+      btnDanger: "#555555", btnSuccess: "#616161", btnSave: "#4f4f4f", btnGray: "#757575",
+      tLight: "white",   tDark: "#8a8a8a",  tileHover: "gray",
+      wInner: "#eeeeee", wOuter: "#d4d4d4", wCrownFill: "#cca300",
+      bInner: "#333333", bOuter: "#272727", bCrownFill: "#cca300",
+      pSize: 84 },
+      
+    AIclassic: {
+      bgMain: "#2c3e50", bgPanel: "#f0d9b5", bgControls: "#3e2723", boardBorder: "#f0d9b5",
+      btnDanger: "#c62828", btnSuccess: "#2e7d32", btnSave: "#1565c0", btnGray: "#78909c",
+      tLight: "#f0d9b5", tDark: "#b58863",  tileHover: "#baca44",
+      wInner: "#e0e0e0", wOuter: "#f5f5f5", wCrownFill: "#ffcc00",
+      bInner: "#a12c2c", bOuter: "#b53737", bCrownFill: "#ffcc00",
+      pSize: 84 },
+      
+    AIgrayscale: {
+      bgMain: "#333333", bgPanel: "#e0e0e0", bgControls: "#424242", boardBorder: "#e0e0e0",
+      btnDanger: "#555555", btnSuccess: "#616161", btnSave: "#4f4f4f", btnGray: "#757575",
+      tLight: "#e0e0e0", tDark: "#888888",  tileHover: "#b0b0b0",
+      wInner: "#e0e0e0", wOuter: "#ffffff", wCrownFill: "#aaaaaa",
+      bInner: "#333333", bOuter: "#424242", bCrownFill: "#aaaaaa",
+      pSize: 84 }
+  };
+
+  let SETTINGS = { pSize: COLOR_PALETTES.classic.pSize, tSize: 32, bBorder: 2, ...structuredClone(COLOR_PALETTES.classic) };
+  let activeTool = "B", activeBorderType = "light";
+
+  function applyThemeColors() {
+    const themeSelect = document.getElementById('theme-select');
+    const selectedTheme = themeSelect ? themeSelect.value : 'classic';
+    const chosenPalette = structuredClone(COLOR_PALETTES[selectedTheme]);
+    Object.assign(SETTINGS, chosenPalette);
+    const r = document.documentElement;
+    r.style.setProperty('--bg-main', SETTINGS.bgMain); r.style.setProperty('--bg-panel', SETTINGS.bgPanel); r.style.setProperty('--bg-controls', SETTINGS.bgControls); r.style.setProperty('--btn-danger', SETTINGS.btnDanger); r.style.setProperty('--btn-success', SETTINGS.btnSuccess); r.style.setProperty('--btn-save', SETTINGS.btnSave); r.style.setProperty('--btn-gray', SETTINGS.btnGray); r.style.setProperty('--tile-hover', SETTINGS.tileHover); r.style.setProperty('--board-border-width', SETTINGS.bBorder + 'px');
+    const finalBorderColor = (activeBorderType === 'dark') ? SETTINGS.tDark : SETTINGS.tLight;
+    r.style.setProperty('--board-border', finalBorderColor);
+    console.log(SETTINGS)
+  }
+
+  applyThemeColors();
+
+  buildBoard(10);
+  initToolPanel();
+</script>
+</body>
+</html>
