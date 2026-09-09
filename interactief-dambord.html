@@ -19,7 +19,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Interactief Dambord</title>
+  <title>Interactief Dambord v1.2.0</title>
   <style>
     /* Alle styling is nu dynamisch gekoppeld aan de centrale CSS-variabelen */
     html, body    { background-color: var(--bg-main, #2c3e50); color: white; font-family: sans-serif; margin: 0; padding: 10px; }
@@ -260,6 +260,8 @@ const saveBtn = document.getElementById('save-btn');
 const copyBtn = document.getElementById('copy-btn');
 const exportFenBtn = document.getElementById('export-fen-btn');
 
+// Genereert de interne SVG-definities en kleurverlopen (radialGradients)
+// die gebruikt worden om de schijven een 3D-uiterlijk te geven.
 function getSvgStyleBlock() {
   return `
     <style>
