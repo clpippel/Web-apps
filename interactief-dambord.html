@@ -1,113 +1,126 @@
 <!DOCTYPE html>
 <!--
 (©) as Wikipedia, Creative Commons Naamsvermelding-GelijkDelen-licentie.
-  VERSION: 1.4.0 (September 2026) | CLP, co-creatie met Google Search AI.
-  Interactieve Dambord maker, voor 8x8, 10x10 en 12x12
-  Interface met CSS-first toggles, module pattern, event delegation.
-  History: 2026-09-10 - Module pattern, delegation, validation
-           2026-09-10 - CSS toggles, ~35 JS lines removed
-           2026-09-09 - Te lange regels afgebroken
+  ======================================================================
+  VERSION: 1.2.1 (September 2026)
+  CLP, co-creatie met Google Search AI.
+  
+  Interactieve Diagram maker, voor 8x8, 10x10 en 12x12
+
+  Interface met actieve tool-selectie boven het bord.
+  Klik op een tool (Schijf, Dam of Prullenbak) en klik op het bord.
+  Als een veld een stuk bevat, wordt dit bij een klik direct verwijderd.
+  Als een schijf op de damlijn wordt gezet, dan wordt de schijf een dam.
+  Themakeuze via deep kopie uit de 4 beschikbare paletten.
+  Inclusief directe export naar PNG én kopiëren naar klembord.
+  History:
+    2026-09-09 - Te lange regels afgebroken (132)
+  =======================================================================
 -->
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Interactief Dambord v1.4.0</title>
+  <title>Interactief Dambord v1.2.0</title>
   <style>
-    /* THEMES */
-    [data-theme="classic"] { --bg-main: #2c3e50; --bg-controls: #3e2723; --btn-danger: #c62828; --btn-success: #2e7d32; --btn-save: #1565c0; --btn-active: #ffd700; --tile-light: #e4e4e4; --tile-dark: #8c8c8c; --board-border: #e4e4e4; --tile-hover: #baca44; }
-    [data-theme="grayscale"] { --bg-main: #333333; --bg-controls: #424242; --btn-danger: #555555; --btn-success: #616161; --btn-save: #4f4f4f; --btn-active: #ffffff; --tile-light: white; --tile-dark: #8a8a8a; --board-border: white; --tile-hover: gray; }
-    [data-theme="AIclassic"] { --bg-main: #2c3e50; --bg-controls: #3e2723; --btn-danger: #c62828; --btn-success: #2e7d32; --btn-save: #1565c0; --btn-active: #ffd700; --tile-light: #f0d9b5; --tile-dark: #b58863; --board-border: #f0d9b5; --tile-hover: #baca44; }
-    [data-theme="AIgrayscale"] { --bg-main: #333333; --bg-controls: #424242; --btn-danger: #555555; --btn-success: #616161; --btn-save: #4f4f4f; --btn-active: #aaaaaa; --tile-light: #e0e0e0; --tile-dark: #888888; --board-border: #e0e0e0; --tile-hover: #b0b0b0; }
-
-    /* BASE */
-    html, body { background-color: var(--bg-main); color: white; font-family: sans-serif; margin: 0; padding: 10px; }
-    main { display: grid; row-gap: 1em; align-content: center; }
-    main > div { max-width: fit-content; margin-inline: auto; }
-    h1 { text-align: center; }
-
-    /* CONTROLS */
+    /* Alle styling is nu dynamisch gekoppeld aan de centrale CSS-variabelen */
+    html, body    { background-color: var(--bg-main, #2c3e50); color: white; font-family: sans-serif; margin: 0; padding: 10px; }
+    main          { display: grid; grid-column: span 1; row-gap: 1em; align-content: center;}
+    main > div    { max-width: fit-content; margin-inline: auto; }
+    h1            { text-align: center; }
+    
     .controls { margin-bottom: 12px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; }
-    .btn, .select-box { background-color: var(--bg-controls); color: #fff; border: none; padding: 6px 12px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; height: 32px; }
-    .btn-danger { background-color: var(--btn-danger); }
-    .btn-success { background-color: var(--btn-success); }
-    .btn-save { background-color: var(--btn-save); }
+    
+    .btn, .select-box { background-color: var(--bg-controls, #3e2723); color: #fff; border: none; padding: 6px 12px; font-size: 
+                       14px; font-weight: bold; border-radius: 4px; cursor: pointer; height: 32px; }
+    .btn-danger { background-color: var(--btn-danger, #c62828); }
+    .btn-success { background-color: var(--btn-success, #2e7d32); }
+    .btn-save { background-color: var(--btn-save, #1565c0); }
+    
     input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    input[type=number] { -webkit-appearance: textfield; appearance: textfield; }
-
-    /* STATE INPUTS */
-    input[type="radio"].hidden, input[type="checkbox"].hidden { display: none; }
-
-    /* TOOL PANEL */
-    .tool-panel { display: flex; gap: 12px; background-color: var(--bg-controls); padding: 10px 20px; border-radius: 6px; margin-bottom: 12px; justify-content: center; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
-    .tool-option { display: flex; justify-content: center; align-items: center; width: 40px; height: 40px; cursor: pointer; border: 2px solid transparent; border-radius: 6px; transition: 0.2s ease; }
+    input[type=number] { -webkit-appearance: textfield; -moz-appearance: textfield; appearance: textfield; }
+    
+    .tool-panel { display: flex; gap: 12px; background-color: var(--bg-controls, #3e2723); padding: 10px 20px; border-radius: 6px; 
+                  margin-bottom: 12px; justify-content: center; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
+    .tool-option { display: flex; justify-content: center; align-items: center; width: 40px; height: 40px; cursor: pointer; border: 
+                   2px solid transparent; border-radius: 6px; transition: background-color 0.2s ease, border-color 0.2s ease; }
     .tool-option:hover { background-color: rgba(255,255,255,0.15); }
-    input[name="tool-select"]:checked + .tool-option { border-color: var(--btn-active); background-color: rgba(255,255,255,0.25); box-shadow: 0 0 8px var(--btn-active); }
-    .tool-option .piece { width: 85%; height: 85%; pointer-events: none; }
-
-    /* BOARD */
+    .tool-option.active { border-color: var(--btn-active, #ffd700); background-color: rgba(255,255,255,0.25); box-shadow: 0 0 8px 
+                          var(--btn-active, #ffd700); }
+    .tool-option .piece, .tool-option .trash-icon { width: 85%; height: 85%; pointer-events: none; }
+    
     .board-container { padding: 0; background-color: transparent; border-radius: 4px; }
-    .board { display: grid; border: var(--board-border-width, 2px) solid var(--board-border); }
-    .tile { display: flex; justify-content: center; align-items: center; user-select: none; position: relative; box-sizing: border-box; }
+    .board { display: grid; border: var(--board-border-width, 2px) solid var(--board-border, #f0d9b5); }
+    .tile { display: flex; justify-content: center; align-items: center; user-select: none;
+            position: relative; box-sizing: border-box; }
     .tile.playable { cursor: pointer; }
-    .tile.playable:hover { background-color: var(--tile-hover) !important; }
-    .piece { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; transition: 0.1s ease; }
+    .tile.playable:hover { background-color: var(--tile-hover, #baca44) !important; }
+    
+    .piece { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;
+            transition: transform 0.1s ease; }
     .tile .piece:hover { transform: scale(1.06); }
-    .field-number { position: absolute; top: 2px; left: 3px; font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.4); pointer-events: none; z-index: 3; text-shadow: 0 0 2px rgba(0,0,0,0.8); }
+    
+    .field-number { position: absolute; top: 2px; left: 3px; font-size: 10px; font-weight: bold; color: rgba(255, 255, 255, 0.40); 
+                  pointer-events: none; z-index: 3; text-shadow: 0 0 2px rgba(0,0,0,0.8); }
+    .flipped { transform: rotate(180deg); }
+    .flipped .piece, .flipped .field-number { transform: rotate(180deg); }
+    
+    .editor-panel { margin-top: 12px; background-color: var(--bg-controls, #3e2723); padding: 10px; border-radius: 6px; text-align: 
+                   center; font-size: 14px; }
+    .radio-group { display: inline-block; margin: 4px 8px; font-weight: bold; cursor: pointer; }
 
-    /* FLIP */
-    input[name="board-view"]:checked ~ .board-container { transform: rotate(180deg); }
-    input[name="board-view"]:checked ~ .board-container .piece, input[name="board-view"]:checked ~ .board-container .field-number { transform: rotate(180deg); }
-
-    /* MENU */
-    .dropdown { position: relative; display: inline-block; }
-    input[id="format-toggle"] { display: none; }
-    #format-menu-content { display: none; position: absolute; top: 34px; left: 0; background-color: var(--bg-controls); border: 2px solid var(--board-border); border-radius: 6px; padding: 12px; z-index: 1000; min-width: 240px; }
-    input[id="format-toggle"]:checked ~ #format-menu-content { display: block; }
+    /* Geometrie dropdown menu styling */
+    #format-menu-content { display: none; position: absolute; top: 34px; left: 0; background-color: var(--bg-controls, #3e2723); 
+    border: 2px solid var(--board-border, #f0d9b5); border-radius: 6px; padding: 12px; z-index: 1000; min-width: 240px; }
     .menu-row { display: flex; align-items: center; margin-bottom: 10px; width: 100%; }
     .menu-row label { font-size: 12px; font-weight: bold; color: white; width: 120px; }
     .border-divider { border-top: 1px solid rgba(255,255,255,0.2); margin-top: 10px; }
-
-    /* BORDER COLOR */
-    input[name="border-color"] { display: none; }
-    .border-color-btn { height: 24px !important; padding: 2px 8px !important; font-size: 11px !important; background-color: rgba(255,255,255,0.1); border: 1px solid transparent !important; }
-    input[name="border-color"]:checked + label .border-color-btn, input[name="border-color"]:checked + .border-color-btn { background-color: var(--btn-save); border-color: var(--btn-active) !important; }
-
-    /* EDITOR */
-    .editor-panel { margin-top: 12px; background-color: var(--bg-controls); padding: 10px; border-radius: 6px; text-align: center; font-size: 14px; }
-    .radio-group { display: inline-block; margin: 4px 8px; font-weight: bold; cursor: pointer; }
   </style>
 </head>
 <body>
+
 <main>
   <h1>Interactief Dambord</h1>
+
   <div class="controls">
     <select id="size-select" class="select-box">
       <option value="8">Bord: 8 x 8</option>
       <option value="10" selected>Bord: 10 x 10</option>
       <option value="12">Bord: 12 x 12</option>
     </select>
-    <div class="dropdown">
-      <input type="checkbox" id="format-toggle" class="hidden">
-      <label for="format-toggle" class="btn" id="format-menu-btn">📐 Geometrie</label>
+
+    <div class="dropdown" style="position: relative; display: inline-block;">
+      <button class="btn" id="format-menu-btn" type="button">📐 Geometrie</button>
       <div id="format-menu-content">
-        <div class="menu-row"><label>Veld (px):</label><input type="text" id="tilesize-input" class="select-box" value="32" style="width: 45px; text-align: center;" inputmode="numeric" aria-label="Tile size"></div>
-        <div class="menu-row"><label>Schijf (%):</label><input type="text" id="piecesize-input" class="select-box" value="84" style="width: 45px; text-align: center;" inputmode="numeric" aria-label="Piece size"></div>
-        <div class="menu-row"><label>Bordrand (px):</label><input type="text" id="boardborder-input" class="select-box" value="2" style="width: 45px; text-align: center;" inputmode="numeric" aria-label="Border width"></div>
+        <div class="menu-row">
+          <label>Veld (px):</label>
+          <input type="text" id="tilesize-input" class="select-box" value="32" style="width: 45px; text-align: center;" inputmode=
+"numeric" pattern="[0-9]*">
+        </div>
+        <div class="menu-row">
+          <label>Schijf (%):</label>
+          <input type="text" id="piecesize-input" class="select-box" value="84" style="width: 45px; text-align: center;" inputmode=
+"numeric" pattern="[0-9]*">
+        </div>
+        <div class="menu-row">
+          <label>Bordrand (px):</label>
+          <input type="text" id="boardborder-input" class="select-box" value="2" style="width: 45px; text-align: center;" inputmode=
+"numeric" pattern="[0-9]*">
+        </div>
         <div class="menu-row">
           <label>Kleur rand:</label>
           <div style="display: inline-flex; gap: 4px;">
-            <input type="radio" name="border-color" value="light" id="border-light" class="hidden" checked>
-            <label for="border-light" class="btn border-color-btn">Licht</label>
-            <input type="radio" name="border-color" value="dark" id="border-dark" class="hidden">
-            <label for="border-dark" class="btn border-color-btn">Donker</label>
+            <button type="button" class="btn border-color-btn active" data-border="light" style="height: 24px; padding: 2px 8px; 
+font-size: 11px;">Licht</button>
+            <button type="button" class="btn border-color-btn" data-border="dark" style="height: 24px; padding: 2px 8px; font-size: 
+11px; background-color: rgba(255,255,255,0.1); border: 1px solid transparent;">Donker</button>
           </div>
         </div>
         <div class="border-divider"></div>
       </div>
     </div>
-    <input type="radio" name="board-view" id="flip-toggle" class="hidden">
-    <label for="flip-toggle" class="btn" id="flip-btn">🔄 Flip bord</label>
+
+    <button class="btn" id="flip-btn">🔄 Flip bord</button>
     <select id="theme-select" class="select-box">
       <option value="classic" selected>🎨 DCIJ</option>
       <option value="grayscale">🎨 Scan</option>
@@ -120,265 +133,501 @@
     <button class="btn btn-save" id="copy-btn">📋 Copy als PNG</button>
     <button class="btn btn-save" id="export-fen-btn">📋 Exporteer FEN</button>
     <button class="btn btn-save" id="import-fen-btn">📥 Importeer FEN</button>
-    <input type="text" id="fen-input-field" class="select-box" placeholder="Plak hier je FEN-code..." style="width: 200px; font-weight: normal;" aria-label="FEN input">
+    <input type="text" id="fen-input-field" class="select-box" placeholder="Plak hier je FEN-code..." style="width: 200px; 
+font-weight: normal;">
   </div>
-  <div class="tool-panel" id="tool-panel" role="radiogroup" aria-label="Piece selection">
-    <input type="radio" name="tool-select" value="B" id="tool-b-input" class="hidden" checked>
-    <label for="tool-b-input" class="tool-option" title="Zwarte schijf" id="tool-b"></label>
-    <input type="radio" name="tool-select" value="BK" id="tool-bk-input" class="hidden">
-    <label for="tool-bk-input" class="tool-option" title="Zwarte dam" id="tool-bk"></label>
-    <input type="radio" name="tool-select" value="W" id="tool-w-input" class="hidden">
-    <label for="tool-w-input" class="tool-option" title="Witte schijf" id="tool-w"></label>
-    <input type="radio" name="tool-select" value="WK" id="tool-wk-input" class="hidden">
-    <label for="tool-wk-input" class="tool-option" title="Witte dam" id="tool-wk"></label>
+
+  <div class="tool-panel" id="tool-panel">
+    <div class="tool-option active" data-tool="B" title="Zwarte schijf" id="tool-b"></div>
+    <div class="tool-option" data-tool="BK" title="Zwarte dam" id="tool-bk"></div>
+    <div class="tool-option" data-tool="W" title="Witte schijf" id="tool-w"></div>
+    <div class="tool-option" data-tool="WK" title="Witte dam" id="tool-wk"></div>
   </div>
-  <div class="board-container" id="board-holder"><div class="board" id="draughts-board"></div></div>
+
+  <div class="board-container" id="board-holder">
+    <div class="board" id="draughts-board"></div>
+  </div>
+
   <div class="editor-panel">
     <div style="margin-bottom: 4px;"><strong>Weergave schijven:</strong></div>
     <label class="radio-group"><input type="radio" name="style-select" value="gradient" checked> D3</label>
     <label class="radio-group"><input type="radio" name="style-select" value="flat"> D2</label>
   </div>
 </main>
+
 <script>
-const DraughtsApp = (function() {
-  'use strict';
-  const CROWN_PATH_DATA = "M 18,72 L 16,36 L 33,53 L 50,23 L 67,53 L 84,36 L 82,72 Z";
-  const CROWN_MARGE_PERCENT = 5;
-  const MIN_TILE_SIZE = 15, MAX_TILE_SIZE = 150, MIN_PIECE_SIZE = 1, MAX_PIECE_SIZE = 100, MAX_BORDER_WIDTH = 40;
+// ======================================================================
+// CENTRALE CONFIGURATIE VOOR DE KROON EN MARGES
+// ======================================================================
+const CROWN_PATH_DATA = "M 18,72 L 16,36 L 33,53 L 50,23 L 67,53 L 84,36 L 82,72 Z";
+const CROWN_MARGE_PERCENT = 5;
 
-  const COLOR_PALETTES = {
-    classic: { interface: { bgMain: "#2c3e50", bgControls: "#3e2723", btnDanger: "#c62828", btnSuccess: "#2e7d32", btnSave: "#1565c0", btnActive: "#ffd700" }, board: { tLight: "#e4e4e4", tDark: "#8c8c8c", boardBorder: "#e4e4e4", tileHover: "#baca44", wInner: "#ffffff", wOuter: "#e0e0e0", wCrownFill: "#d4aa09", bInner: "#d95353", bOuter: "#b53737", bCrownFill: "#d4aa09" }, pSize: 75 },
-    grayscale: { interface: { bgMain: "#333333", bgControls: "#424242", btnDanger: "#555555", btnSuccess: "#616161", btnSave: "#4f4f4f", btnActive: "#ffffff" }, board: { tLight: "white", tDark: "#8a8a8a", boardBorder: "white", tileHover: "gray", wInner: "#eeeeee", wOuter: "#d4d4d4", wCrownFill: "#cca300", bInner: "#333333", bOuter: "#272727", bCrownFill: "#cca300" }, pSize: 84 },
-    AIclassic: { interface: { bgMain: "#2c3e50", bgControls: "#3e2723", btnDanger: "#c62828", btnSuccess: "#2e7d32", btnSave: "#1565c0", btnActive: "#ffd700" }, board: { tLight: "#f0d9b5", tDark: "#b58863", boardBorder: "#f0d9b5", tileHover: "#baca44", wInner: "#e0e0e0", wOuter: "#f5f5f5", wCrownFill: "#ffcc00", bInner: "#a12c2c", bOuter: "#b53737", bCrownFill: "#ffcc00" }, pSize: 84 },
-    AIgrayscale: { interface: { bgMain: "#333333", bgControls: "#424242", btnDanger: "#555555", btnSuccess: "#616161", btnSave: "#4f4f4f", btnActive: "#aaaaaa" }, board: { tLight: "#e0e0e0", tDark: "#888888", boardBorder: "#e0e0e0", tileHover: "#b0b0b0", wInner: "#e0e0e0", wOuter: "#ffffff", wCrownFill: "#aaaaaa", bInner: "#333333", bOuter: "#424242", bCrownFill: "#aaaaaa" }, pSize: 84 }
-  };
-
-  const state = { pSize: 75, tSize: 32, bBorder: 2, interface: {}, board: {} };
-  const dom = {};
-
-  function initDOM() {
-    dom.boardContainer = document.getElementById('draughts-board');
-    dom.sizeSelect = document.getElementById('size-select');
-    dom.themeSelect = document.getElementById('theme-select');
-    dom.tileInput = document.getElementById('tilesize-input');
-    dom.pieceInput = document.getElementById('piecesize-input');
-    dom.borderInput = document.getElementById('boardborder-input');
-    dom.formatToggle = document.getElementById('format-toggle');
-    dom.clearBtn = document.getElementById('clear-btn');
-    dom.resetBtn = document.getElementById('reset-btn');
-    dom.saveBtn = document.getElementById('save-btn');
-    dom.copyBtn = document.getElementById('copy-btn');
-    dom.exportFenBtn = document.getElementById('export-fen-btn');
-    dom.importFenBtn = document.getElementById('import-fen-btn');
-    dom.fenInput = document.getElementById('fen-input-field');
+// ======================================================================
+// HARDCODED KLEURCODES OP 1 CENTRALE PLEK
+// OPGELEERD IN INTERFACE (DE APP) EN BOARD (HET DAMBORD)
+// ======================================================================
+const COLOR_PALETTES = {
+  classic: {
+    interface: {
+      bgMain: "#2c3e50", bgControls: "#3e2723", btnDanger: "#c62828", btnSuccess: "#2e7d32", btnSave: "#1565c0", btnActive: "#ffd700"
+    },
+    board: {
+      tLight: "#e4e4e4", tDark: "#8c8c8c", boardBorder: "#e4e4e4", tileHover: "#baca44",
+      wInner: "#ffffff", wOuter: "#e0e0e0", wCrownFill: "#d4aa09",
+      bInner: "#d95353", bOuter: "#b53737", bCrownFill: "#d4aa09"
+    },
+    pSize: 75
+  },
+    
+  grayscale: {
+    interface: {
+      bgMain: "#333333", bgControls: "#424242", btnDanger: "#555555", btnSuccess: "#616161", btnSave: "#4f4f4f", btnActive: "#ffffff"
+    },
+    board: {
+      tLight: "white", tDark: "#8a8a8a", boardBorder: "white", tileHover: "gray",
+      wInner: "#eeeeee", wOuter: "#d4d4d4", wCrownFill: "#cca300",
+      bInner: "#333333", bOuter: "#272727", bCrownFill: "#cca300"
+    },
+    pSize: 84
+  },
+    
+  AIclassic: {
+    interface: {
+      bgMain: "#2c3e50", bgControls: "#3e2723", btnDanger: "#c62828", btnSuccess: "#2e7d32", btnSave: "#1565c0", btnActive: "#ffd700"
+    },
+    board: {
+      tLight: "#f0d9b5", tDark: "#b58863", boardBorder: "#f0d9b5", tileHover: "#baca44",
+      wInner: "#e0e0e0", wOuter: "#f5f5f5", wCrownFill: "#ffcc00",
+      bInner: "#a12c2c", bOuter: "#b53737", bCrownFill: "#ffcc00"
+    },
+    pSize: 84
+  },
+    
+  AIgrayscale: {
+    interface: {
+      bgMain: "#333333", bgControls: "#424242", btnDanger: "#555555", btnSuccess: "#616161", btnSave: "#4f4f4f", btnActive: "#aaaaaa"
+    },
+    board: {
+      tLight: "#e0e0e0", tDark: "#888888", boardBorder: "#e0e0e0", tileHover: "#b0b0b0",
+      wInner: "#e0e0e0", wOuter: "#ffffff", wCrownFill: "#aaaaaa",
+      bInner: "#333333", bOuter: "#424242", bCrownFill: "#aaaaaa"
+    },
+    pSize: 84
   }
+};
 
-  function applyThemeColors() {
-    const theme = dom.themeSelect?.value || 'classic';
-    Object.assign(state.interface, COLOR_PALETTES[theme].interface);
-    Object.assign(state.board, COLOR_PALETTES[theme].board);
-    const r = document.documentElement;
-    r.setAttribute('data-theme', theme);
-    r.style.setProperty('--tile-hover', state.board.tileHover);
-    r.style.setProperty('--board-border-width', state.bBorder + 'px');
-    const borderColor = document.querySelector('input[name="border-color"]:checked')?.value || 'light';
-    r.style.setProperty('--board-border', borderColor === 'dark' ? state.board.tDark : state.board.boardBorder);
-  }
+// Sla de actieve kopieën op van het geselecteerde palet
+let SETTINGS = { 
+  pSize: COLOR_PALETTES.classic.pSize, 
+  tSize: 32, 
+  bBorder: 2, 
+  interface: structuredClone(COLOR_PALETTES.classic.interface),
+  board: structuredClone(COLOR_PALETTES.classic.board)
+};
 
-  function getSvgStyleBlock() {
-    return `<style>.grad-w{fill:url(#svg-wg)}.grad-b{fill:url(#svg-bg)}.flat-w{fill:${state.board.wInner}}.flat-b{fill:${state.board.bOuter}}</style><defs><radialGradient id="svg-bg"><stop offset="0%" stop-color="${state.board.bInner}"/><stop offset="100%" stop-color="${state.board.bOuter}"/></radialGradient><radialGradient id="svg-wg"><stop offset="0%" stop-color="${state.board.wInner}"/><stop offset="100%" stop-color="${state.board.wOuter}"/></radialGradient></defs>`;
-  }
+let activeTool = "B", activeBorderType = "light";
 
-  function getPieceHTML(type) {
-    const useFlat = document.querySelector('input[name="style-select"]:checked')?.value === 'flat';
-    const radius = state.pSize / 2, isKing = type.includes('K'), isWhite = type.includes('W');
-    const fillClass = useFlat ? (isWhite ? 'flat-w' : 'flat-b') : (isWhite ? 'grad-w' : 'grad-b');
-    let svg = `<div class="piece" data-type="${type}"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="pointer-events:none;width:100%;height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${fillClass}"/>`;
-    if (isKing) {
-      const schaal = (100 - CROWN_MARGE_PERCENT * 2) / 100, shift = 50 * (1 - schaal);
-      svg += `<g transform="translate(${shift},${shift})scale(${schaal})"><path d="${CROWN_PATH_DATA}" fill="${isWhite ? state.board.wCrownFill : state.board.bCrownFill}"/></g>`;
+function applyThemeColors() {
+  const themeSelect = document.getElementById('theme-select');
+  const selectedTheme = themeSelect ? themeSelect.value : 'classic';
+  
+  SETTINGS.interface = structuredClone(COLOR_PALETTES[selectedTheme].interface);
+  SETTINGS.board = structuredClone(COLOR_PALETTES[selectedTheme].board);
+  
+  const r = document.documentElement;
+  // Update de interface CSS variabelen
+  r.style.setProperty('--bg-main', SETTINGS.interface.bgMain);
+  r.style.setProperty('--bg-controls', SETTINGS.interface.bgControls);
+  r.style.setProperty('--btn-danger', SETTINGS.interface.btnDanger);
+  r.style.setProperty('--btn-success', SETTINGS.interface.btnSuccess);
+  r.style.setProperty('--btn-save', SETTINGS.interface.btnSave);
+  r.style.setProperty('--btn-active', SETTINGS.interface.btnActive);
+  
+  // Update de dambord CSS variabelen
+  r.style.setProperty('--tile-hover', SETTINGS.board.tileHover);
+  r.style.setProperty('--board-border-width', SETTINGS.bBorder + 'px');
+  
+  const finalBorderColor = (activeBorderType === 'dark') ? SETTINGS.board.tDark : SETTINGS.board.boardBorder;
+  r.style.setProperty('--board-border', finalBorderColor);
+
+  // Update de actieve border-knopstijlen in de geometrie dropdown
+  document.querySelectorAll('.border-color-btn').forEach(btn => {
+    if (btn.dataset.border === activeBorderType) {
+      btn.classList.add('active');
+      btn.style.backgroundColor = SETTINGS.interface.btnSave;
+      btn.style.borderColor = SETTINGS.interface.btnActive;
+    } else {
+      btn.classList.remove('active');
+      btn.style.backgroundColor = 'rgba(255,255,255,0.1)';
+      btn.style.borderColor = 'transparent';
     }
-    return svg + '</svg></div>';
+  });
+}
+
+// DOM Elementen ophalen
+const boardContainer = document.getElementById('draughts-board');
+const boardHolder = document.getElementById('board-holder');
+const sizeSelect = document.getElementById('size-select');
+const flipBtn = document.getElementById('flip-btn');
+const themeSelectElement = document.getElementById('theme-select');
+const clearBtn = document.getElementById('clear-btn');
+const resetBtn = document.getElementById('reset-btn');
+const saveBtn = document.getElementById('save-btn');
+const copyBtn = document.getElementById('copy-btn');
+const exportFenBtn = document.getElementById('export-fen-btn');
+
+function getSvgStyleBlock() {
+  return `
+    <style>
+      .grad-w { fill: url(#svg-wg); } .grad-b { fill: url(#svg-bg); }
+      .flat-w { fill: ${SETTINGS.board.wInner}; } .flat-b { fill: ${SETTINGS.board.bOuter}; }
+    </style>
+    <defs>
+      <radialGradient id="svg-bg"><stop offset="0%" stop-color="${SETTINGS.board.bInner}"/><stop offset="100%" 
+       stop-color="${SETTINGS.board.bOuter}"/></radialGradient>
+      <radialGradient id="svg-wg"><stop offset="0%" stop-color="${SETTINGS.board.wInner}"/><stop offset="100%" 
+      stop-color="${SETTINGS.board.wOuter}"/></radialGradient>
+    </defs>
+  `;
+}
+
+function getBPiece() {
+  const useFlat = document.querySelector('input[name="style-select"]:checked').value === 'flat';
+  const radius = SETTINGS.pSize / 2;
+  return `<div class="piece" data-type="B"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style=
+"pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 
+'flat-b' : 'grad-b'}"/></svg></div>`;
+}
+
+function getBKing() {
+  const useFlat = document.querySelector('input[name="style-select"]:checked').value === 'flat';
+  const radius = SETTINGS.pSize / 2;
+  const schaal = (100 - (CROWN_MARGE_PERCENT * 2)) / 100;
+  const shift = 50 * (1 - schaal);
+  return `<div class="piece" data-type="BK"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style=
+"pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 
+'flat-b' : 'grad-b'}"/><g transform="translate(${shift},${shift}) scale(${schaal})"><path d="${CROWN_PATH_DATA}" 
+fill="${SETTINGS.board.bCrownFill}"/></g></svg></div>`;
+}
+
+function getWPiece() {
+  const useFlat = document.querySelector('input[name="style-select"]:checked').value === 'flat';
+  const radius = SETTINGS.pSize / 2;
+  return `<div class="piece" data-type="W"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style=
+"pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 
+'flat-w' : 'grad-w'}"/></svg></div>`;
+}
+
+function getWKing() {
+  const useFlat = document.querySelector('input[name="style-select"]:checked').value === 'flat';
+  const radius = SETTINGS.pSize / 2;
+  const schaal = (100 - (CROWN_MARGE_PERCENT * 2)) / 100;
+  const shift = 50 * (1 - schaal);
+  return `<div class="piece" data-type="WK"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style=
+"pointer-events:none; width:100%; height:100%;">${getSvgStyleBlock()}<circle cx="50" cy="50" r="${radius}" class="${useFlat ? 
+'flat-w' : 'grad-w'}"/><g transform="translate(${shift},${shift}) scale(${schaal})"><path d="${CROWN_PATH_DATA}" 
+fill="${SETTINGS.board.wCrownFill}"/></g></svg></div>`;
+}
+
+function initToolPanel() {
+  const currentTileSize = SETTINGS.tSize;
+  document.getElementById('tool-w').innerHTML = getWPiece();
+  document.getElementById('tool-b').innerHTML = getBPiece();
+  document.getElementById('tool-wk').innerHTML = getWKing();
+  document.getElementById('tool-bk').innerHTML = getBKing();
+  document.querySelectorAll('.tool-option').forEach(option => {
+    option.style.width = option.style.height = currentTileSize + 'px'; option.style.flexShrink = "0";
+    option.classList.toggle('active', option.dataset.tool === activeTool);
+  });
+}
+
+function checkAndRestoreFieldNumber1(tile) {
+  if (tile.dataset.fieldNumber === "1" && !tile.querySelector('.field-number')) {
+    const numEl = document.createElement('span'); numEl.className = 'field-number'; numEl.textContent = '1'; tile.prepend(numEl);
   }
+}
 
-  function initToolPanel() {
-    const tileSize = state.tSize;
-    ['tool-w', 'tool-b', 'tool-wk', 'tool-bk'].forEach((id, i) => {
-      document.getElementById(id).innerHTML = getPieceHTML(['W', 'B', 'WK', 'BK'][i]);
-    });
-    document.querySelectorAll('.tool-option').forEach(opt => { opt.style.width = opt.style.height = tileSize + 'px'; opt.style.flexShrink = "0"; });
-  }
-
-  function checkAndRestoreFieldNumber1(tile) {
-    if (tile.dataset.fieldNumber === "1" && !tile.querySelector('.field-number')) {
-      const numEl = document.createElement('span');
-      numEl.className = 'field-number';
-      numEl.textContent = '1';
-      tile.prepend(numEl);
-    }
-  }
-
-  function buildBoard(size, preservePieces = false) {
-    const tileSize = state.tSize;
-    let savedPieces = [];
-    if (preservePieces) document.querySelectorAll('.dark-tile').forEach(tile => {
-      const piece = tile.querySelector('.piece');
-      if (piece) savedPieces.push({ row: parseInt(tile.dataset.row), col: parseInt(tile.dataset.col), type: piece.dataset.type });
-    });
-    dom.boardContainer.innerHTML = '';
-    dom.boardContainer.style.gridTemplateColumns = dom.boardContainer.style.gridTemplateRows = `repeat(${size}, ${tileSize}px)`;
-    const fillRows = size === 8 ? 3 : size === 12 ? 5 : 4;
-    let fieldCounter = 1;
-    for (let row = 0; row < size; row++) {
-      for (let col = 0; col < size; col++) {
-        const tile = document.createElement('div');
-        const isDark = (row + col) % 2 !== 0;
-        tile.className = `tile ${isDark ? 'dark-tile playable' : 'light-tile'}`;
-        tile.style.backgroundColor = isDark ? state.board.tDark : state.board.tLight;
-        tile.style.width = tile.style.height = tileSize + 'px';
-        tile.dataset.row = row;
-        tile.dataset.col = col;
-        if (isDark) {
-          tile.dataset.fieldNumber = fieldCounter;
-          if (preservePieces) {
-            const matching = savedPieces.find(p => p.row === row && p.col === col);
-            if (matching) tile.innerHTML += getPieceHTML(matching.type);
-          } else {
-            if (row < fillRows) tile.innerHTML += getPieceHTML('B');
-            if (row >= size - fillRows) tile.innerHTML += getPieceHTML('W');
-          }
-          checkAndRestoreFieldNumber1(tile);
-          fieldCounter++;
-        }
-        dom.boardContainer.appendChild(tile);
-      }
-    }
-  }
-
-  function handleTileClick(e) {
-    const tile = e.target.closest('.playable');
-    if (!tile) return;
-    const piece = tile.querySelector('.piece');
-    const boardSize = parseInt(dom.sizeSelect.value);
-    const row = parseInt(tile.dataset.row);
-    if (piece) { tile.removeChild(piece); checkAndRestoreFieldNumber1(tile); return; }
-    let toolToPlace = document.querySelector('input[name="tool-select"]:checked')?.value || 'B';
-    if (toolToPlace === "W" && row === 0) toolToPlace = "WK";
-    if (toolToPlace === "B" && row === boardSize - 1) toolToPlace = "BK";
-    tile.insertAdjacentHTML('beforeend', getPieceHTML(toolToPlace));
-    checkAndRestoreFieldNumber1(tile);
-  }
-
-  function handleTileRightClick(e) { e.preventDefault(); handleTileClick(e); }
-
-  function refreshBoardPieces() {
+function buildBoard(size, preservePieces = false) {
+  const currentTileSize = SETTINGS.tSize; let savedPieces = [];
+  if (preservePieces) {
     document.querySelectorAll('.dark-tile').forEach(tile => {
-      const piece = tile.querySelector('.piece');
-      if (piece) { const type = piece.dataset.type; piece.remove(); tile.insertAdjacentHTML('beforeend', getPieceHTML(type)); }
-      checkAndRestoreFieldNumber1(tile);
+      const piece = tile.querySelector('.piece'); if (piece) savedPieces.push({ row: tile.dataset.row, col: tile.dataset.col, type: 
+piece.dataset.type });
     });
-    initToolPanel();
   }
+  boardContainer.innerHTML = '';
+  boardContainer.style.gridTemplateColumns = boardContainer.style.gridTemplateRows = 'repeat(' + size + ', ' + currentTileSize + 
+'px)';
+  let fillRows = (size === 8) ? 3 : (size === 12 ? 5 : 4); let fieldCounter = 1;
 
-  function drawPixelCircle(ctx, cx, cy, radius, fillColor) {
-    const startX = Math.floor(cx - radius), startY = Math.floor(cy - radius);
-    const endX = Math.ceil(cx + radius), endY = Math.ceil(cy + radius);
-    ctx.fillStyle = fillColor;
-    for (let y = startY; y <= endY; y++) {
-      for (let x = startX; x <= endX; x++) {
-        if (((x - cx) * (x - cx) + (y - cy) * (y - cy)) <= (radius * radius)) ctx.fillRect(x, y, 1, 1);
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      const tile = document.createElement('div'); const isDark = (row + col) % 2 !== 0;
+      tile.className = 'tile ' + (isDark ? 'dark-tile playable' : 'light-tile');
+      tile.style.backgroundColor = isDark ? SETTINGS.board.tDark : SETTINGS.board.tLight;
+      tile.style.width = tile.style.height = currentTileSize + 'px'; tile.dataset.row = row; tile.dataset.col = col;
+
+      if (isDark) {
+        tile.dataset.fieldNumber = fieldCounter;
+        if (preservePieces) {
+          const matchingPiece = savedPieces.find(p => p.row == row && p.col == col);
+          if (matchingPiece) {
+            if (matchingPiece.type === 'W') tile.innerHTML += getWPiece();
+            if (matchingPiece.type === 'WK') tile.innerHTML += getWKing();
+            if (matchingPiece.type === 'B') tile.innerHTML += getBPiece();
+            if (matchingPiece.type === 'BK') tile.innerHTML += getBKing();
+          }
+        } else {
+          if (row < fillRows) tile.innerHTML += getBPiece();
+          if (row >= size - fillRows) tile.innerHTML += getWPiece();
+        }
+        checkAndRestoreFieldNumber1(tile); fieldCounter++;
+        tile.addEventListener('contextmenu', handleTileRightClick); tile.addEventListener('click', handleTileClick);
       }
+      boardContainer.appendChild(tile);
     }
   }
+}
 
-  function generateBoardCanvas() {
-    const s = parseInt(dom.sizeSelect.value), tileSize = state.tSize;
-    const padding = 2, innerBorder = state.bBorder, totalPadding = padding + innerBorder;
-    const totalSize = s * tileSize + totalPadding * 2;
-    const useFlat = document.querySelector('input[name="style-select"]:checked')?.value === 'flat';
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = totalSize;
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    const borderType = document.querySelector('input[name="border-color"]:checked')?.value || 'light';
-    const currentBorderColor = borderType === 'dark' ? state.board.tDark : state.board.boardBorder;
-    ctx.fillStyle = currentBorderColor;
-    ctx.fillRect(padding, padding, totalSize - padding * 2, totalSize - padding * 2);
-    dom.boardContainer.querySelectorAll('.tile').forEach(tile => {
-      const row = parseInt(tile.dataset.row), col = parseInt(tile.dataset.col);
-      const x = totalPadding + col * tileSize, y = totalPadding + row * tileSize;
-      ctx.fillStyle = tile.classList.contains('dark-tile') ? state.board.tDark : state.board.tLight;
-      ctx.fillRect(x, y, tileSize, tileSize);
-      if (tile.dataset.fieldNumber === "1") { ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.font = "bold 9px sans-serif"; ctx.textBaseline = "top"; ctx.textAlign = "left"; ctx.fillText("1", x + 3, y + 2); }
-      const piece = tile.querySelector('.piece');
-      if (piece) {
-        const type = piece.dataset.type, cx = x + tileSize / 2, cy = y + tileSize / 2;
-        const r = tileSize * (state.pSize / 100) * 0.5, isWhite = type === 'W' || type === 'WK';
-        if (useFlat) { drawPixelCircle(ctx, cx, cy, r, isWhite ? state.board.wInner : state.board.bOuter); }
-        else {
-          const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-          if (isWhite) { grad.addColorStop(0, state.board.wInner); grad.addColorStop(1, state.board.wOuter); }
-          else { grad.addColorStop(0, state.board.bInner); grad.addColorStop(1, state.board.bOuter); }
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
-          ctx.fillStyle = grad;
-          ctx.fill();
-        }
-        if (type === 'WK' || type === 'BK') {
-          const crownPath = new Path2D(CROWN_PATH_DATA);
-          const schaalMarge = (100 - CROWN_MARGE_PERCENT * 2) / 100;
-          ctx.save();
-          ctx.translate(cx, cy);
-          const svgScale = tileSize * (state.pSize / 100) / 100;
-          ctx.scale(svgScale, svgScale);
-          ctx.scale(schaalMarge, schaalMarge);
-          ctx.translate(-50, -50);
-          ctx.fillStyle = type === 'WK' ? state.board.wCrownFill : state.board.bCrownFill;
-          ctx.fill(crownPath);
-          ctx.restore();
-        }
-      }
-    });
-    return canvas;
-  }
+function handleTileClick(e) {
+  const tile = e.currentTarget; const piece = tile.querySelector('.piece');
+  const boardSize = parseInt(sizeSelect.value); const row = parseInt(tile.dataset.row);
+  if (piece) { tile.removeChild(piece); checkAndRestoreFieldNumber1(tile); return; }
 
-  function clampInput(val, min, max) { return Math.max(min, Math.min(max, val)); }
+  let toolToPlace = activeTool;
+  if (toolToPlace === "W" && row === 0) { toolToPlace = "WK"; }
+  if (toolToPlace === "B" && row === boardSize - 1) { toolToPlace = "BK"; }
 
-  function attachEventListeners() {
-    dom.themeSelect.addEventListener('change', () => { applyThemeColors(); document.querySelectorAll('.tile').forEach(t => { t.style.backgroundColor = t.classList.contains('dark-tile') ? state.board.tDark : state.board.tLight; }); refreshBoardPieces(); });
-    document.querySelectorAll('input[name="style-select"]').forEach(r => r.addEventListener('change', refreshBoardPieces));
-    dom.sizeSelect.addEventListener('change', (e) => { buildBoard(parseInt(e.target.value)); initToolPanel(); });
-    dom.clearBtn.addEventListener('click', () => { dom.boardContainer.querySelectorAll('.piece').forEach(p => p.remove()); dom.boardContainer.querySelectorAll('.dark-tile').forEach(t => checkAndRestoreFieldNumber1(t)); });
-    dom.resetBtn.addEventListener('click', () => { buildBoard(parseInt(dom.sizeSelect.value)); initToolPanel(); });
-    dom.saveBtn.addEventListener('click', () => { const s = parseInt(dom.sizeSelect.value), canvas = generateBoardCanvas(); const link = document.createElement('a'); link.download = `dambord_${s}x${s}.png`; link.href = canvas.toDataURL('image/png'); link.click(); });
-    if (dom.copyBtn) dom.copyBtn.addEventListener('click', () => { const canvas = generateBoardCanvas(); canvas.toBlob(blob => { if (!blob) { alert("Canvas export failed"); return; } navigator.clipboard.write([new ClipboardItem({'image/png': blob})]).then(() => alert("Gekopieerd!")).catch(e => { alert("Kopiëren mislukt"); console.error(e); }); }, 'image/png'); });
-    dom.exportFenBtn.addEventListener('click', () => { let white = [], black = []; dom.boardContainer.querySelectorAll('.dark-tile').forEach(t => { const p = t.querySelector('.piece'); if (p) { if (p.dataset.type === 'W') white.push(t.dataset.fieldNumber); if (p.dataset.type === 'WK') white.push('K' + t.dataset.fieldNumber); if (p.dataset.type === 'B') black.push(t.dataset.fieldNumber); if (p.dataset.type === 'BK') black.push('K' + t.dataset.fieldNumber); } }); const sf = (a, b) => parseInt(a.replace('K','')) - parseInt(b.replace('K','')); white.sort(sf); black.sort(sf); let fen = "W"; if (white.length > 0) fen += ":W" + white.join(','); if (black.length > 0) fen += ":B" + black.join(','); dom.fenInput.value = fen; dom.fenInput.select(); navigator.clipboard.writeText(fen).catch(() => {}); });
-    const executeFenImport = () => { const fen = dom.fenInput.value.trim(); if (!fen) { alert("Plak FEN-code"); return; } let cf = fen.replace(/\s+/g,''); const m = cf.match(/"([^"]+)"/); if (m) cf = m[1]; const parts = cf.toUpperCase().split(':'); let white = [], black = []; parts.forEach(p => { if (p.startsWith('W') && p.length > 1) white = p.substring(1).split(','); else if (p.startsWith('B') && p.length > 1) black = p.substring(1).split(','); }); buildBoard(parseInt(dom.sizeSelect.value), false); dom.boardContainer.querySelectorAll('.piece').forEach(p => p.remove()); dom.boardContainer.querySelectorAll('.dark-tile').forEach(t => { const fn = t.dataset.fieldNumber; if (white.includes(fn)) t.insertAdjacentHTML('beforeend', getPieceHTML('W')); else if (white.includes('K' + fn)) t.insertAdjacentHTML('beforeend', getPieceHTML('WK')); else if (black.includes(fn)) t.insertAdjacentHTML('beforeend', getPieceHTML('B')); else if (black.includes('K' + fn)) t.insertAdjacentHTML('beforeend', getPieceHTML('BK')); checkAndRestoreFieldNumber1(t); }); initToolPanel(); dom.fenInput.value = ""; };
-    dom.importFenBtn.addEventListener('click', executeFenImport);
-    dom.fenInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') executeFenImport(); });
-    dom.tileInput.addEventListener('input', (e) => { let v = parseInt(e.target.value.replace(/[^0-9]/g,'')) || MIN_TILE_SIZE; v = clampInput(v, MIN_TILE_SIZE, MAX_TILE_SIZE); e.target.value = v; state.tSize = v; buildBoard(parseInt(dom.sizeSelect.value), true); initToolPanel(); });
-    dom.pieceInput.addEventListener('input', (e) => { let v = parseInt(e.target.value.replace(/[^0-9]/g,'')) || MIN_PIECE_SIZE; v = clampInput(v, MIN_PIECE_SIZE, MAX_PIECE_SIZE); e.target.value = v; state.pSize = v; refreshBoardPieces(); });
-    dom.borderInput.addEventListener('input', (e) => { let v = parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0; v = clampInput(v, 0, MAX_BORDER_WIDTH); e.target.value = v; state.bBorder = v; applyThemeColors(); });
-    [dom.tileInput, dom.pieceInput, dom.borderInput].forEach(i => i.addEventListener('focus', (e) => e.target.select()));
-    document.addEventListener('click', (e) => { if (!dom.formatToggle.checked) return; if (document.getElementById('format-menu-btn').contains(e.target)) return; if (document.getElementById('format-menu-content').contains(e.target)) return; dom.formatToggle.checked = false; });
-  }
+  if (toolToPlace === "W")  tile.insertAdjacentHTML('beforeend', getWPiece());
+  if (toolToPlace === "B")  tile.insertAdjacentHTML('beforeend', getBPiece());
+  if (toolToPlace === "WK") tile.insertAdjacentHTML('beforeend', getWKing());
+  if (toolToPlace === "BK") tile.insertAdjacentHTML('beforeend', getBKing());
+  checkAndRestoreFieldNumber1(tile);
+}
 
-  return {
-    init: function() {
-      initDOM();
-      Object.assign(state.interface, COLOR_PALETTES.classic.interface);
-      Object.assign(state.board, COLOR_PALETTES.classic.board);
-      document.documentElement.setAttribute('data-theme', 'classic');
-      buildBoard(10);
-      initToolPanel();
-      dom.boardContainer.addEventListener('click', handleTileClick);
-      dom.boardContainer.addEventListener('contextmenu', handleTileRightClick);
-      attachEventListeners();
+function handleTileRightClick(e) { e.preventDefault(); handleTileClick(e); }
+
+function refreshBoardPieces() {
+  document.querySelectorAll('.dark-tile').forEach(function(tile) {
+    const piece = tile.querySelector('.piece');
+    if (piece) {
+      const type = piece.dataset.type; piece.remove();
+      if (type === 'W') tile.insertAdjacentHTML('beforeend', getWPiece());
+      if (type === 'WK') tile.insertAdjacentHTML('beforeend', getWKing());
+      if (type === 'B') tile.insertAdjacentHTML('beforeend', getBPiece());
+      if (type === 'BK') tile.insertAdjacentHTML('beforeend', getBKing());
     }
-  };
-})();
+    checkAndRestoreFieldNumber1(tile);
+  });
+  initToolPanel();
+}
 
-document.addEventListener('DOMContentLoaded', DraughtsApp.init);
+themeSelectElement.addEventListener('change', function() {
+  applyThemeColors();
+  document.querySelectorAll('.tile').forEach(tile => { tile.style.backgroundColor = tile.classList.contains('dark-tile') ? 
+SETTINGS.board.tDark : SETTINGS.board.tLight; });
+  refreshBoardPieces();
+});
+
+document.querySelectorAll('input[name="style-select"]').forEach(radio => { radio.addEventListener('change', refreshBoardPieces); });
+
+function drawPixelCircle(ctx, cx, cy, radius, fillColor) {
+  const startX = Math.floor(cx - radius); const startY = Math.floor(cy - radius);
+  const endX = Math.ceil(cx + radius); const endY = Math.ceil(cy + radius);
+  ctx.fillStyle = fillColor;
+  for (let y = startY; y <= endY; y++) {
+    for (let x = startX; x <= endX; x++) { if (((x - cx) * (x - cx) + (y - cy) * (y - cy)) <= (radius * radius)) ctx.fillRect(x, y, 
+1, 1); }
+  }
+}
+
+function generateBoardCanvas() {
+  const s = parseInt(sizeSelect.value); const tileSize = SETTINGS.tSize;
+  const padding = 2; const innerBorder = SETTINGS.bBorder; const totalPadding = padding + innerBorder;
+  const totalSize = (s * tileSize) + (totalPadding * 2);
+  const useFlat = document.querySelector('input[name="style-select"]:checked').value === 'flat';
+
+  const canvas = document.createElement('canvas'); canvas.width = canvas.height = totalSize;
+  const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
+
+  // 1. Pak de juiste randkleur op basis van de actieve selectie (Licht of Donker)
+  const currentBorderColor = (activeBorderType === 'dark') ? SETTINGS.board.tDark : SETTINGS.board.boardBorder;
+
+  // 2. Vul de Canvas vanaf de padding-marge direct met de bordrandkleur
+  // Dit elimineert de app-achtergrondkleur en voorkomt elke vorm van pixel-bleeding.
+  ctx.fillStyle = currentBorderColor; 
+  ctx.fillRect(padding, padding, totalSize - (padding * 2), totalSize - (padding * 2));
+
+  boardContainer.querySelectorAll('.tile').forEach(tile => {
+    const row = parseInt(tile.dataset.row); const col = parseInt(tile.dataset.col);
+    const x = totalPadding + (col * tileSize); const y = totalPadding + (row * tileSize);
+    
+    ctx.fillStyle = tile.classList.contains('dark-tile') ? SETTINGS.board.tDark : SETTINGS.board.tLight; 
+    ctx.fillRect(x, y, tileSize, tileSize);
+
+    // Teken de velden strak over de randkleur heen
+    if (tile.dataset.fieldNumber === "1") {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.25)"; ctx.font = "bold 9px sans-serif"; ctx.textBaseline = "top"; ctx.textAlign = 
+"left"; ctx.fillText("1", x + 3, y + 2);
+    }
+
+    const piece = tile.querySelector('.piece');
+    if (piece) {
+      const type = piece.dataset.type; const cx = x + (tileSize / 2); const cy = y + (tileSize / 2);
+      const r = tileSize * (SETTINGS.pSize / 100) * 0.5; const isWhite = (type === 'W' || type === 'WK');
+
+      if (useFlat) { drawPixelCircle(ctx, cx, cy, r, isWhite ? SETTINGS.board.wInner : SETTINGS.board.bOuter); } 
+      else {
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        if (isWhite) { grad.addColorStop(0, SETTINGS.board.wInner); grad.addColorStop(1, SETTINGS.board.wOuter); }
+        else { grad.addColorStop(0, SETTINGS.board.bInner); grad.addColorStop(1, SETTINGS.board.bOuter); }
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = grad; ctx.fill();
+      }
+
+      if (type === 'WK' || type === 'BK') {
+        const crownPath = new Path2D(CROWN_PATH_DATA);
+        const schaalMarge = (100 - (CROWN_MARGE_PERCENT * 2)) / 100;
+        ctx.save();
+        ctx.translate(cx, cy);
+        const svgScale = (tileSize * (SETTINGS.pSize / 100)) / 100;
+        ctx.scale(svgScale, svgScale);
+        ctx.scale(schaalMarge, schaalMarge);
+        ctx.translate(-50, -50);
+        ctx.fillStyle = (type === 'WK') ? SETTINGS.board.wCrownFill : SETTINGS.board.bCrownFill; ctx.fill(crownPath);
+        ctx.restore();
+      }
+    }
+  });
+  return canvas;
+}
+
+saveBtn.addEventListener('click', function() {
+  const s = parseInt(sizeSelect.value); const canvas = generateBoardCanvas();
+  const link = document.createElement('a'); link.download = 'dambord_' + s + 'x' + s + '.png'; link.href = 
+canvas.toDataURL('image/png'); link.click();
+});
+
+if (copyBtn) {
+  copyBtn.addEventListener('click', function() {
+    const canvas = generateBoardCanvas();
+    canvas.toBlob(blob => {
+      navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]).then(() => {
+        alert("Dambord-afbeelding succesvol gekopieerd! Je kunt hem nu direct plakken (Ctrl+V).");
+      }).catch(err => { alert("Kopiëren mislukt. Zorg dat je browser klembordtoestemming heeft."); });
+    }, 'image/png');
+  });
+}
+
+exportFenBtn.addEventListener('click', function() {
+  let whitePieces = []; let blackPieces = [];
+  boardContainer.querySelectorAll('.dark-tile').forEach(tile => {
+    const fieldNum = tile.dataset.fieldNumber; const piece = tile.querySelector('.piece');
+    if (piece) {
+      const type = piece.dataset.type;
+      if (type === 'W')  whitePieces.push(fieldNum); if (type === 'WK') whitePieces.push('K' + fieldNum);
+      if (type === 'B')  blackPieces.push(fieldNum); if (type === 'BK') blackPieces.push('K' + fieldNum);
+    }
+  });
+  const sortFn = (a, b) => parseInt(a.replace('K','')) - parseInt(b.replace('K',''));
+  whitePieces.sort(sortFn); blackPieces.sort(sortFn);
+  let fenString = "W";
+  if (whitePieces.length > 0) fenString += ":W" + whitePieces.join(',');
+  if (blackPieces.length > 0) fenString += ":B" + blackPieces.join(',');
+  const inputField = document.getElementById('fen-input-field'); if (inputField) { inputField.value = fenString; 
+inputField.select(); }
+  navigator.clipboard.writeText(fenString).then(() => { alert("FEN-code staat in het tekstvak én is gekopieerd naar je klembord!"); 
+});
+});
+
+function executeFenImport() {
+  const field = document.getElementById('fen-input-field'); if (!field) return;
+  const fen = field.value.trim(); if (!fen) { alert("Plak eerst een FEN-code in het invoerveld."); return; }
+  let maxFieldNum = 0; 
+  let cleanFen = fen.replace(/\s+/g, '');
+  
+  const match = cleanFen.match(/"([^"]+)"/);
+  if (match) { cleanFen = match[1]; }
+
+  const parts = cleanFen.toUpperCase().split(':');
+  let whiteList = [], blackList = [];
+  parts.forEach(part => {
+    if (part.startsWith('W') && part.length > 1) { whiteList = part.substring(1).split(','); }
+    else if (part.startsWith('B') && part.length > 1) { blackList = part.substring(1).split(','); }
+  });
+  [...whiteList, ...blackList].forEach(p => { const num = parseInt(p.replace('K', '')); if (!isNaN(num) && num > maxFieldNum) 
+maxFieldNum = num; });
+  
+  buildBoard(parseInt(sizeSelect.value), false);
+  boardContainer.querySelectorAll('.piece').forEach(p => p.remove());
+  boardContainer.querySelectorAll('.dark-tile').forEach(tile => {
+    const fNum = tile.dataset.fieldNumber;
+    if (whiteList.includes(fNum)) { tile.insertAdjacentHTML('beforeend', getWPiece()); }
+    else if (whiteList.includes('K' + fNum)) { tile.insertAdjacentHTML('beforeend', getWKing()); }
+    else if (blackList.includes(fNum)) { tile.insertAdjacentHTML('beforeend', getBPiece()); }
+    else if (blackList.includes('K' + fNum)) { tile.insertAdjacentHTML('beforeend', getBKing()); }
+    checkAndRestoreFieldNumber1(tile);
+  });
+  initToolPanel(); field.value = "";
+}
+
+const targetImportBtn = document.getElementById('import-fen-btn'); if (targetImportBtn) targetImportBtn.onclick = executeFenImport;
+const targetInputField = document.getElementById('fen-input-field'); if (targetInputField) { targetInputField.onkeydown = 
+function(e) { if (e.key === 'Enter') executeFenImport(); }; }
+
+sizeSelect.addEventListener('change', e => { buildBoard(parseInt(e.target.value)); initToolPanel(); });
+flipBtn.addEventListener('click', () => boardHolder.classList.toggle('flipped'));
+clearBtn.addEventListener('click', () => { boardContainer.querySelectorAll('.piece').forEach(p => p.remove()); 
+boardContainer.querySelectorAll('.dark-tile').forEach(tile => checkAndRestoreFieldNumber1(tile)); });
+resetBtn.addEventListener('click', () => { buildBoard(parseInt(sizeSelect.value)); initToolPanel(); });
+
+document.getElementById('tool-panel').addEventListener('click', (e) => {
+  const option = e.target.closest('.tool-option'); if (!option) return;
+  document.querySelectorAll('.tool-option').forEach(opt => opt.classList.remove('active')); option.classList.add('active'); 
+activeTool = option.dataset.tool;
+});
+
+const formatMenuBtn = document.getElementById('format-menu-btn'); const formatMenuContent = 
+document.getElementById('format-menu-content');
+const tilesizeInput = document.getElementById('tilesize-input'); const piecesizeInput = document.getElementById('piecesize-input'); 
+const boardborderInput = document.getElementById('boardborder-input');
+
+formatMenuBtn.addEventListener('click', (e) => { e.stopPropagation(); const isVisible = formatMenuContent.style.display === 
+'block'; formatMenuContent.style.display = isVisible ? 'none' : 'block'; });
+document.addEventListener('click', () => { formatMenuContent.style.display = 'none'; }); 
+formatMenuContent.addEventListener('click', (e) => { e.stopPropagation(); });
+
+tilesizeInput.addEventListener('input', e => {
+  let cleanVal = e.target.value.replace(/[^0-9]/g, ''); e.target.value = cleanVal; let val = parseInt(cleanVal); if (isNaN(val) || 
+val < 15) return;
+  if (val > 150) val = 150; SETTINGS.tSize = val; buildBoard(parseInt(sizeSelect.value), true); initToolPanel();
+});
+tilesizeInput.addEventListener('focus', e => { e.target.select(); });
+
+piecesizeInput.addEventListener('input', e => {
+  let cleanVal = e.target.value.replace(/[^0-9]/g, ''); e.target.value = cleanVal; let val = parseInt(cleanVal); if (isNaN(val) || 
+val < 1) return;
+  if (val > 100) { val = 100; e.target.value = 100; } SETTINGS.pSize = val; refreshBoardPieces();
+});
+piecesizeInput.addEventListener('focus', e => { e.target.select(); });
+
+boardborderInput.addEventListener('input', e => {
+  let cleanVal = e.target.value.replace(/[^0-9]/g, ''); e.target.value = cleanVal; let val = parseInt(cleanVal); if (isNaN(val)) 
+return;
+  if (val > 40) { val = 40; e.target.value = 40; } SETTINGS.bBorder = val; applyThemeColors();
+});
+boardborderInput.addEventListener('focus', e => { e.target.select(); });
+
+document.querySelectorAll('.border-color-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    activeBorderType = e.target.dataset.border;
+    applyThemeColors();
+  });
+});
+
+// Eerste opbouw van de app
+applyThemeColors();
+buildBoard(10);
+initToolPanel();
 </script>
 </body>
 </html>
