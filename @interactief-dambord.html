@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <meta charset="UTF-8">
+<!--
+(©) Wikipedia, Creative Commons Naamsvermelding-GelijkDelen-licentie.
+  ======================================================================
+  Keep comment here
+  CLP, co-creatie met Google Search AI.
+
+  Interactieve Diagram maker, voor 8x8, 10x10 en 12x12
+
+  Interface met actieve tool-selectie boven het bord.
+  Klik op een tool (Schijf, Dam of Prullenbak) en klik op het bord.
+  Als een veld een stuk bevat, wordt dit bij een klik direct verwijderd.
+  Als een schijf op de damlijn wordt gezet, dan wordt de schijf een dam.
+  Themakeuze via deep kopie uit de 4 beschikbare paletten.
+  Inclusief directe export naar PNG én kopiëren naar klembord.
+  History:
+    v1.4.3 2026-09-13   Fieldnumber 1 removed, AI grijs veranderd in damkunst.
+    v1.4.2 2026-09-13   Set padding in generateBoardCanvas to 0.
+                        Avoid black border when reducing colors.
+    v1.4.1 2026-09-11 - Max width main is: fit-content.
+                        Styles simplified. Danger, Succes renamed to leeg, begin.
+                        Layout improved.
+    v1.4.0 2026-09-10 - Veldnummer 1 schaalt nu dynamisch mee met de tegelgrootte en heeft betere zichtbaarheid.
+                        Dubbele FEN-export event listener opgeschoond en FEN-string syntax gecorrigeerd (:).
+    v1.3.0 2026-09-09 - Te lange regels afgebroken (132).
+    v1.3.0 2026-09-09 - (Vector-optimized, Flipped-export & FEN-corrected).
+
+Kernfunties:
+buildBoard(size)     :  Genereert het dynamische grid (8x8, 10x10 of 12x12).
+applyThemeColors()   :  Verwerkt de vier kleurenpaletten (Klassiek, Scan, AI Klassiek, AI Grijs) en vertaalt deze naar CSS-variabelen.
+generateBoardCanvas():  Tekent het complete dambord onzichtbaar na op een HTML5-canvas
+                        zodra je op "Opslaan als PNG" of "Naar klembord" drukt.
+copyBtn()            :  Copy base64 to clipboard.
+executeFenExport()   :  Converteert de positie naar een FEN string voor imput naar players (KR, TB).
+executeFenImport()   :  Leest een dambordcode (FEN) uit, berekent automatisch of het om een 8x8, 10x10 of 12x12 bord gaat,
+                        en zet alle schijven en dammen in één klap op de juiste positie.
+  =========================================================================
+-->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interactief Dambord v1.4.1 (Layout improved, Styles simplified)</title>
+  <style>
+    x             { outline: thin solid red; }  /* * for diagnostics. */
+    html, body    { background-color: var(--bg-main); color: white; font-family: sans-serif; margin: 0; padding: 2px; }
+    main          { display: grid; grid-column: span 1; row-gap: 1em; align-content: center; max-width: fit-content; }
+    main > div    { max-width: fit-content; margin-inline: auto; }
+    h1            { text-align: center; }
+
+    .controls { margin-bottom: 12px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; }
+    .btn, .select-box { background-color: var(--bg-controls); color: #fff; border: none;
+                        padding: 6px 12px; font-size: 14px; font-weight: bold; border-radius: 4px;
+                        cursor: pointer; height: 32px; }
+    .menu-geo { display: flex; align-items: center; margin-bottom: 10px; width: 100%; }
+    .menu-geo label { font-size: 12px; font-weight: bold; color: white; width: 120px; }
+
+    .flipped { transform: rotate(180deg); }
+    .flipped .piece, .flipped .field-number { transform: rotate(180deg); }
+
+    .btn-leeg { background-color: var(--btn-leeg); }
+    .btn-begin { background-color: var(--btn-begin); }
+    .btn-save { background-color: var(--btn-save); }
+
+    .board-border-color.active { background-color: var(--btn-save) !important; border: 1px solid var(--btn-active) !important; }
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -webkit-appearance: textfield; -moz-appearance: textfield; appearance: textfield; }
+
+    .tool-panel { display: flex; gap: 12px;
+                 background-color: var(--bg-controls); padding: 10px 20px;
+                 border-radius: 6px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.1); }
+    .tool-option { display: flex; justify-content: center; align-items: center; }
+    .tool-option:hover { background-color: rgba(255,255,255,0.15); }
+    .tool-option.active { border-color: var(--btn-active); background-color: rgba(255,255,255,0.25);
+                          box-shadow: 0 0 8px var(--btn-active); }
+    .tool-option .piece { width: 85%; height: 85%; pointer-events: none; }
+
+    .board-container { padding: 0; background-color: transparent; border-radius: 4px; transition: transform 0.4s ease-in-out; }
+    .piece, .field-number { transition: transform 0.4s ease-in-out; }
+    .board { display: grid; border: var(--board-border-width, 2px) solid var(--board-border); }
+
+    .tile.light-tile { background-color: var(--tile-light); }
+    .tile.dark-tile  { background-color: var(--tile-dark); }
+
+    .tile { display: flex; justify-content: center; align-items: center; user-select: none;
+            position: relative; box-sizing: border-box; }
+    .tile.playable { cursor: pointer; }
+    .tile.playable:hover { background-color: var(--tile-hover) !important; }
+    .tile .piece:hover { transform: scale(1.06); }
+
+    .grad-w { fill: url(#svg-wg); }
+    .grad-b { fill: url(#svg-bg); }
+    .flat-w { fill: var(--piece-w-flat); }
+    .flat-b { fill: var(--piece-b-flat); }
+
+
+    .piece { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;
+             transition: transform 0.1s ease; }
+
+    .field-number { position: absolute; top: 2px; left: 3px; font-size: 10px; font-weight: bold;
+                    color: rgba(255, 255, 255, 0.40); pointer-events: none; z-index: 3; text-shadow: 0 0 2px rgba(0,0,0,0.8); }
+    .field-number { position: absolute; top: 2px; left: 3px; font-size: calc(var(--tile-size-css, 32px) * 0.31);
+                    font-weight: bold; color: rgba(255, 255, 255, 0.65); pointer-events: none; z-index: 3;
+                    text-shadow: 0 0 3px rgba(0,0,0,0.8); }
+
+    .editor-panel { margin-top: 12px; background-color: var(--bg-controls); padding: 10px; border-radius: 6px;
+                    text-align: center; font-size: 14px; }
+    .radio-group { display: inline-block; margin: 4px 8px; font-weight: bold; cursor: pointer; }
+
+    #format-menu-content { display: none; position: absolute; top: 34px; left: 0; background-color: var(--bg-controls);
+                           border: 2px solid var(--board-border); border-radius: 6px; padding: 12px; z-index: 1000; min-width: 240px; }
+    #format-menu-content.open { display: block; }
+
+    .border-divider { border-top: 1px solid rgba(255,255,255,0.2); margin-top: 10px; }
+  </style>
+<body>
+
+<main>
+  <h1>Interactief Dambord</h1>
+
+  <div class="controls">
+    <select id="size-select" class="select-box">
+      <option value="8">Bord: 8 x 8</option>
+      <option value="10" selected>Bord: 10 x 10</option>
+      <option value="12">Bord: 12 x 12</option>
+    </select>
+
+    <div class="dropdown" style="position: relative; display: inline-block;">
+      <button class="btn" id="format-menu-btn" type="button">📐 Geometrie</button>
+      <div id="format-menu-content">
+        <div class="menu-geo">
+          <label>Veld (px):</label>
+          <input type="text" id="tilesize-input" class="select-box" value="32" style="width: 45px;
+                 text-align: center;" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="menu-geo">
+          <label>Schijf (%):</label>
+          <input type="text" id="piecesize-input" class="select-box" value="84" style="width: 45px;
+                 text-align: center;" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="menu-geo">
+          <label>Bordrand (px):</label>
+          <input type="text" id="boardborder-input" class="select-box" value="2" style="width: 45px;
+                 text-align: center;" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="menu-geo">
+          <label>Kleur rand:</label>
+          <div style="display: inline-flex; gap: 4px;">
+            <button type="button" class="btn board-border-color active" data-border="light" style="height: 24px;
+            padding: 2px 8px; font-size: 11px;">Licht</button>
+            <button type="button" class="btn board-border-color" data-border="dark" style="height: 24px;
+                    padding: 2px 8px; font-size: 11px; background-color: rgba(255,255,255,0.1);
+                    border: 1px solid transparent;">Donker</button>
+          </div>
+        </div>
+        <div class="border-divider"></div>
+      </div>
+    </div>
+
+    <button class="btn" id="flip-btn">🔄 Flip bord</button>
+    <select id="theme-select" class="select-box">
+      <option value="classic" selected>🎨 DCIJ</option>
+      <option value="grayscale">🎨 Scan</option>
+      <option value="AIclassic">🎨 AI Klassiek</option>
+      <option value="Theme4">🎨 Damkunst</option>
+    </select>
+    <button class="btn btn-leeg" id="clear-btn">🗑️ Leegmaken</button>
+    <button class="btn btn-begin" id="reset-btn">🏁 Beginstand</button>
+    <button class="btn btn-save" id="save-btn">💾 Save als PNG</button>
+    <button class="btn btn-save" id="copy-btn">📋 Copy als PNG</button>
+    <button class="btn btn-save" id="export-fen-btn">📋 Exporteer FEN</button>
+    <button class="btn btn-save" id="import-fen-btn">📥 Importeer FEN</button>
+  </div>
+
+  <div>
+  <input type="text" id="fen-input-field" class="select-box" placeholder="Plak hier je FEN-code..."
+         style="width: 20em; font-weight: normal;"></div>
+
+  <div class="tool-panel" id="tool-panel">
+    <div class="tool-option active" data-tool="B" title="Zwarte schijf" id="tool-b"></div>
+    <div class="tool-option" data-tool="BK" title="Zwarte dam" id="tool-bk"></div>
+    <div class="tool-option" data-tool="W" title="Witte schijf" id="tool-w"></div>
+    <div class="tool-option" data-tool="WK" title="Witte dam" id="tool-wk"></div>
+  </div>
+
+  <div class="board-container" id="board-holder">
+    <div class="board" id="draughts-board"></div>
+  </div>
+
+  <div class="editor-panel">
+    <div style="margin-bottom: 4px;"><strong>Weergave schijven:</strong></div>
+    <label class="radio-group"><input type="radio" name="style-select" value="flat" checked> D2</label>
+    <label class="radio-group"><input type="radio" name="style-select" value="gradient"> D3</label>
+  </div>
+</main>
+
+<script>
+// Centrale configuratie voor de kroon en marges
+const CROWN_PATH_DATA = "M 18,72 L 16,36 L 33,53 L 50,23 L 67,53 L 84,36 L 82,72 Z";
+const CROWN_MARGE_PERCENT = 5;
+
+// Hardcoded kleurcodes op 1 centrale plek.
+// Opgeleerd in interface (de app) en board (het dambord).
+const COLOR_PALETTES = {
+  classic: {
+    interface: { bgMain: "#2c3e50", bgControls: "#3e2723",
+                 btnLeeg: "#c62828", btnBegin: "#2e7d32", btnSave: "#1565c0", btnActive: "#ffd700" },
+    board:     { tLight: "#e4e4e4", tDark: "#8c8c8c", boardBorder: "#e4e4e4", tileHover: "#baca44",
+                 wInner: "#ffffff", wOuter: "#e0e0e0", wCrownFill: "#d4aa09",
+                 bInner: "#d95353", bOuter: "#b53737", bCrownFill: "#d4aa09" },
+    pSize: 84
+  },
+  grayscale: {
+    interface: { bgMain: "#333333", bgControls: "#424242",
+                 btnLeeg: "#555555", btnBegin: "#616161", btnSave: "#4f4f4f", btnActive: "#ffffff" },
+    board:     { tLight: "white", tDark: "#8a8a8a", boardBorder: "white", tileHover: "gray",
+                 wInner: "#eeeeee", wOuter: "#d4d4d4", wCrownFill: "#cca300",
+                 bInner: "#333333", bOuter: "#272727", bCrownFill: "#cca300" },
+    pSize: 84
+  },
+  AIclassic: {
+    interface: { bgMain: "#2c3e50", bgControls: "#3e2723",
+                 btnLeeg: "#c62828", btnBegin: "#2e7d32", btnSave: "#1565c0", btnActive: "#ffd700" },
+    board:     { tLight: "#f0d9b5", tDark: "#b58863", boardBorder: "#f0d9b5", tileHover: "#baca44",
+                 wInner: "#e0e0e0", wOuter: "#f5f5f5", wCrownFill: "#ffcc00",
+                 bInner: "#a12c2c", bOuter: "#b53737", bCrownFill: "#ffcc00" },
+    pSize: 84
+  },
+  Theme4: {
+    interface: { bgMain: "#333333", bgControls: "#424242",
+                 btnLeeg: "#555555", btnBegin: "#616161", btnSave: "#4f4f4f", btnActive: "#aaaaaa" },
+    board:     { tLight: "#dee3e6", tDark: "#8ca2ad", boardBorder: "#e0e0e0", tileHover: "#b0b0b0",
+                 wInner: "#e0e0e0", wOuter: "#ffffff", wCrownFill: "#3c3c3c",
+                 bInner: "#333333", bOuter: "#424242", bCrownFill: "#e6e6e6" },
+    pSize: 84
+  }
+};
+
+// Sla de actieve kopieën op van het geselecteerde palet.
+let SETTINGS = {
+  pSize: COLOR_PALETTES.classic.pSize,
+  tSize: 30,
+  bBorder: 2,
+  interface: structuredClone(COLOR_PALETTES.classic.interface),
+  board: structuredClone(COLOR_PALETTES.classic.board)
+};
+
+let activeTool = "B", activeBorderType = "light";
+
+// DOM Elementen ophalen
+const boardContainer = document.getElementById('draughts-board');
+const boardHolder = document.getElementById('board-holder');
+const sizeSelect = document.getElementById('size-select');
+const flipBtn = document.getElementById('flip-btn');
+const themeSelectElement = document.getElementById('theme-select');
+const clearBtn = document.getElementById('clear-btn');
+const resetBtn = document.getElementById('reset-btn');
+const saveBtn = document.getElementById('save-btn');
+const copyBtn = document.getElementById('copy-btn');
+const executeFenExport = document.getElementById('export-fen-btn');
+
+// Leest het geselecteerde kleurenpalet uit en past de CSS-variabelen.
+// van de pagina en de knoppen dynamisch aan.
+function applyThemeColors() {
+  const selectedTheme = themeSelectElement ? themeSelectElement.value : 'classic';
+
+  // 1. EERST de settings updaten met het NIEUWE thema (voorkomt kleurenlek!)
+  SETTINGS.interface = structuredClone(COLOR_PALETTES[selectedTheme].interface);
+  SETTINGS.board = structuredClone(COLOR_PALETTES[selectedTheme].board);
+
+  // 2. Gradients updaten of aanmaken voor 3D (D3)
+  let gradContainer = document.getElementById('global-board-gradients');
+  const gradHtml = `
+    <svg id="global-board-gradients" style="position: absolute; width: 0; height: 0; overflow: hidden;" xmlns="http://w3.org/2000/svg">
+      <defs>
+        <radialGradient id="svg-bg"><stop offset="0%" stop-color="${SETTINGS.board.bInner}"/><stop offset="100%"
+stop-color="${SETTINGS.board.bOuter}"/></radialGradient>
+        <radialGradient id="svg-wg"><stop offset="0%" stop-color="${SETTINGS.board.wInner}"/><stop offset="100%"
+stop-color="${SETTINGS.board.wOuter}"/></radialGradient>
+      </defs>
+    </svg>`;
+  if (gradContainer) {
+    gradContainer.outerHTML = gradHtml;
+  } else {
+    document.body.insertAdjacentHTML('afterbegin', gradHtml);
+  }
+
+  // 3. CSS variabelen naar het document schrijven
+  const r = document.documentElement;
+  r.style.setProperty('--bg-main', SETTINGS.interface.bgMain);
+  r.style.setProperty('--bg-controls', SETTINGS.interface.bgControls);
+  r.style.setProperty('--btn-leeg', SETTINGS.interface.btnLeeg);
+  r.style.setProperty('--btn-begin', SETTINGS.interface.btnBegin);
+  r.style.setProperty('--btn-save', SETTINGS.interface.btnSave);
+  r.style.setProperty('--btn-active', SETTINGS.interface.btnActive);
+  r.style.setProperty('--tile-hover', SETTINGS.board.tileHover);
+  r.style.setProperty('--board-border-width', SETTINGS.bBorder + 'px');
+  r.style.setProperty('--tile-light', SETTINGS.board.tLight);
+  r.style.setProperty('--tile-dark', SETTINGS.board.tDark);
+  // Geeft de tegelgrootte live door aan de CSS voor het schalen van nummer 1
+  r.style.setProperty('--tile-size-css', SETTINGS.tSize + 'px');
+
+  // EXACT DEZELFDE LOGICA ALS IN JE ORIGINELE CODE VOOR FLAT (D2) RENDERING:
+  // Wit gebruikt wInner, Zwart gebruikt bOuter (zoals in jouw getSvgStyleBlock)
+  r.style.setProperty('--piece-w-flat', SETTINGS.board.wInner);
+  r.style.setProperty('--piece-b-flat', SETTINGS.board.bOuter);
+
+  const finalBorderColor = (activeBorderType === 'dark') ? SETTINGS.board.tDark : SETTINGS.board.boardBorder;
+  r.style.setProperty('--board-border', finalBorderColor);
+
+  document.querySelectorAll('.board-border-color').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.border === activeBorderType);
+  });
+}
+
+
+// Genereert de interne SVG-definities en kleurverlopen (radialGradients)
+// die gebruikt worden om de schijven een 3D-uiterlijk te geven.
+function getSvgStyleBlock() {
+  return `
+    <style>
+      .grad-w { fill: url(#svg-wg); } .grad-b { fill: url(#svg-bg); }
+      .flat-w { fill: ${SETTINGS.board.wInner}; } .flat-b { fill: ${SETTINGS.board.bInner}; }
+    </style>
+    <defs>
+      <radialGradient id="svg-bg"><stop offset="0%" stop-color="${SETTINGS.board.bInner}"/><stop offset="100%"
+stop-color="${SETTINGS.board.bOuter}"/></radialGradient>
+      <radialGradient id="svg-wg"><stop offset="0%" stop-color="${SETTINGS.board.wInner}"/><stop offset="100%"
+stop-color="${SETTINGS.board.wOuter}"/></radialGradient>
+    </defs>
+  `;
+}
+
+function createPieceSvg(type) {
+  const checkedRadio = document.querySelector('input[name="style-select"]:checked');
+  const useFlat = checkedRadio ? checkedRadio.value === 'flat' : false;
+  const radius = SETTINGS.pSize / 2;
+  const isWhite = (type === 'W' || type === 'WK');
+  const isKing = (type === 'BK' || type === 'WK');
+
+  const colorClass = useFlat ? (isWhite ? 'flat-w' : 'flat-b') : (isWhite ? 'grad-w' : 'grad-b');
+
+  let svgContent = `<circle cx="50" cy="50" r="${radius}" class="${colorClass}"/>`;
+
+  if (isKing) {
+    const schaal = (100 - (CROWN_MARGE_PERCENT * 2)) / 100;
+    const shift = 50 * (1 - schaal);
+    const crownFill = isWhite ? SETTINGS.board.wCrownFill : SETTINGS.board.bCrownFill;
+    svgContent += `<g transform="translate(${shift},${shift}) scale(${schaal})"><path d="${CROWN_PATH_DATA}"
+fill="${crownFill}"/></g>`;
+  }
+  return `<div class="piece" data-type="${type}"><svg viewBox="0 0 100 100" xmlns="http://w3.org/2000/svg" style="pointer-events:none;
+width:100%; height:100%;">${svgContent}</svg></div>`;
+}
+
+const getBPiece = () => createPieceSvg('B');
+const getBKing  = () => createPieceSvg('BK');
+const getWPiece = () => createPieceSvg('W');
+const getWKing  = () => createPieceSvg('WK');
+
+// Vult de knoppen van het selectievenster (boven het bord) met de
+// juiste schijven en koppelt de actieve gereedschapskliks.
+function initToolPanel() {
+  const currentTileSize = SETTINGS.tSize;
+  document.getElementById('tool-w').innerHTML = getWPiece();
+  document.getElementById('tool-b').innerHTML = getBPiece();
+  document.getElementById('tool-wk').innerHTML = getWKing();
+  document.getElementById('tool-bk').innerHTML = getBKing();
+  document.querySelectorAll('.tool-option').forEach(option => {
+    option.style.width = option.style.height = currentTileSize + 'px';
+    option.style.flexShrink = "0";
+    option.classList.toggle('active', option.dataset.tool === activeTool);
+  });
+}
+
+//  Bouwt het HTML dambord raster (grid) op op basis van de maat (8/10/12).
+//  Bepaalt de donkere/lichte velden en deelt optioneel de beginstukken uit.
+function buildBoard(size, preservePieces = false) {
+  const currentTileSize = SETTINGS.tSize; let savedPieces = [];
+  if (preservePieces) {
+    document.querySelectorAll('.dark-tile').forEach(tile => {
+      const piece = tile.querySelector('.piece');
+      if (piece) savedPieces.push({ fieldNum: tile.dataset.fieldNumber, type: piece.dataset.type });
+    });
+  }
+  boardContainer.innerHTML = '';
+  boardContainer.style.gridTemplateColumns = boardContainer.style.gridTemplateRows = 'repeat(' + size + ', ' + currentTileSize +
+'px)';
+  let fillRows = (size === 8) ? 3 : (size === 12 ? 5 : 4); let fieldCounter = 1;
+
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      const tile = document.createElement('div'); const isDark = (row + col) % 2 !== 0;
+      tile.className = 'tile ' + (isDark ? 'dark-tile playable' : 'light-tile');
+      tile.style.width = tile.style.height = currentTileSize + 'px'; tile.dataset.row = row; tile.dataset.col = col;
+
+      if (isDark) {
+        tile.dataset.fieldNumber = fieldCounter;
+        let pieceHtml = '';
+        if (preservePieces) {
+          const matchingPiece = savedPieces.find(p => p.fieldNum == fieldCounter);
+          if (matchingPiece) {
+            if (matchingPiece.type === 'W')  pieceHtml = getWPiece();
+            if (matchingPiece.type === 'WK') pieceHtml = getWKing();
+            if (matchingPiece.type === 'B')  pieceHtml = getBPiece();
+            if (matchingPiece.type === 'BK') pieceHtml = getBKing();
+          }
+        } else {
+          if (row < fillRows) pieceHtml = getBPiece();
+          if (row >= size - fillRows) pieceHtml = getWPiece();
+        }
+        if (pieceHtml) tile.insertAdjacentHTML('beforeend', pieceHtml);
+        fieldCounter++;
+        tile.addEventListener('contextmenu', handleTileRightClick); tile.addEventListener('click', handleTileClick);
+      }
+      boardContainer.appendChild(tile);
+    }
+  }
+}
+
+// Handelt een muisklik op een speelbaar veld af. Verwijdert bestaande
+// stukken of plaatst het gekozen actieve gereedschapsstuk (W/B/WK/BK).
+function handleTileClick(e) {
+  const tile = e.currentTarget; const piece = tile.querySelector('.piece');
+  const boardSize = parseInt(sizeSelect.value); const row = parseInt(tile.dataset.row);
+  if (piece) { tile.removeChild(piece); return; }
+
+  let toolToPlace = activeTool;
+  const isFlipped = boardHolder.classList.contains('flipped');
+  const isWhitePromotionRow = isFlipped ? (row === boardSize - 1) : (row === 0);
+  const isBlackPromotionRow = isFlipped ? (row === 0) : (row === boardSize - 1);
+
+  if (toolToPlace === "W" && isWhitePromotionRow) { toolToPlace = "WK"; }
+  if (toolToPlace === "B" && isBlackPromotionRow) { toolToPlace = "BK"; }
+
+  if (toolToPlace === "W")  tile.insertAdjacentHTML('beforeend', getWPiece());
+  if (toolToPlace === "B")  tile.insertAdjacentHTML('beforeend', getBPiece());
+  if (toolToPlace === "WK") tile.insertAdjacentHTML('beforeend', getWKing());
+  if (toolToPlace === "BK") tile.insertAdjacentHTML('beforeend', getBKing());
+}
+
+function handleTileRightClick(e) { e.preventDefault(); handleTileClick(e); }
+
+// Verwijdert alle stukken en bouwt ze opnieuw op. Wordt gebruikt bij
+// het wisselen tussen vlakke (D2) en verloopkleuren (D3) of paletwissel.
+function refreshBoardPieces() {
+  document.querySelectorAll('.dark-tile').forEach(tile => {
+    const piece = tile.querySelector('.piece');
+    if (piece) {
+      const type = piece.dataset.type; piece.remove();
+      if (type === 'W') tile.insertAdjacentHTML('beforeend', getWPiece());
+      if (type === 'WK') tile.insertAdjacentHTML('beforeend', getWKing());
+      if (type === 'B') tile.insertAdjacentHTML('beforeend', getBPiece());
+      if (type === 'BK') tile.insertAdjacentHTML('beforeend', getBKing());
+    }
+  });
+  initToolPanel();
+}
+
+// Genereert een onzichtbaar HTML5 Canvas element waarop het dambord,
+// de stukken én de helderwitte '1' handmatig worden nagetekend voor PNG export.
+// Set padding to 0 to avoid unwanted extra colors due to anti-aliasing.
+function generateBoardCanvas() {
+  const s = parseInt(sizeSelect.value); const tileSize = SETTINGS.tSize;
+  const padding = 0;                                                   // Avoid dark padding area.
+  const innerBorder = SETTINGS.bBorder; const totalPadding = padding + innerBorder;
+  const totalSize = (s * tileSize) + (totalPadding * 2);
+  const useFlat = document.querySelector('input[name="style-select"]:checked').value === 'flat';
+
+  const canvas = document.createElement('canvas'); canvas.width = canvas.height = totalSize;
+  const ctx = canvas.getContext('2d');
+
+  // Behoud de strakke vector/pixel-look zonder wazige randen (anti-aliasing uit)
+  // ctx.imageSmoothingEnabled = false;
+
+  const isFlipped = boardHolder.classList.contains('flipped');
+  const currentBorderColor = (activeBorderType === 'dark') ? SETTINGS.board.tDark : SETTINGS.board.boardBorder;
+
+  // Vul de Canvas vanaf de padding-marge direct met de bordrandkleur
+  // Dit elimineert de app-achtergrondkleur en voorkomt elke vorm van pixel-bleeding.
+  ctx.fillStyle = currentBorderColor;
+  ctx.fillRect(padding, padding, totalSize - (padding * 2), totalSize - (padding * 2));
+
+  // Loop door de velden
+  boardContainer.querySelectorAll('.tile').forEach(tile => {
+    let row = parseInt(tile.dataset.row); let col = parseInt(tile.dataset.col);
+    if (isFlipped) { row = s - 1 - row; col = s - 1 - col; }
+
+    const x = totalPadding + (col * tileSize); const y = totalPadding + (row * tileSize);
+    ctx.fillStyle = tile.classList.contains('dark-tile') ? SETTINGS.board.tDark : SETTINGS.board.tLight;
+    ctx.fillRect(x, y, tileSize, tileSize);
+
+    const piece = tile.querySelector('.piece');
+    if (piece) {
+      const type = piece.dataset.type; const cx = x + (tileSize / 2); const cy = y + (tileSize / 2);
+      const r = tileSize * (SETTINGS.pSize / 100) * 0.5; const isWhite = (type === 'W' || type === 'WK');
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+
+      if (useFlat) {
+        // HARDWARE-VERSNELD: Direct vullen met de juiste kleur (bInner voor zwart, zoals op het scherm)
+        ctx.fillStyle = isWhite ? SETTINGS.board.wInner : SETTINGS.board.bInner;
+        ctx.fill();
+      } else {
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        if (isWhite) { grad.addColorStop(0, SETTINGS.board.wInner); grad.addColorStop(1, SETTINGS.board.wOuter); }
+        else { grad.addColorStop(0, SETTINGS.board.bInner); grad.addColorStop(1, SETTINGS.board.bOuter); }
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+
+      // Teken de kroon indien dam
+      if (type === 'WK' || type === 'BK') {
+        const crownPath = new Path2D(CROWN_PATH_DATA);
+        const schaalMarge = (100 - (CROWN_MARGE_PERCENT * 2)) / 100;
+        ctx.save(); ctx.translate(cx, cy);
+        if (isFlipped) ctx.rotate(Math.PI);
+        const svgScale = (tileSize * (SETTINGS.pSize / 100)) / 100;
+        ctx.scale(svgScale, svgScale); ctx.scale(schaalMarge, schaalMarge); ctx.translate(-50, -50);
+        ctx.fillStyle = (type === 'WK') ? SETTINGS.board.wCrownFill : SETTINGS.board.bCrownFill; ctx.fill(crownPath);
+        ctx.restore();
+      }
+    }
+  });
+  return canvas;
+}
+
+// Vertaalt een ingevoerde FEN-string (bijv. W:W12,K13:B24) naar een
+// opstelling en past de gridgrootte automatisch aan indien nodig.
+function executeFenImport() {
+  const field = document.getElementById('fen-input-field'); if (!field) return;
+  const fen = field.value.trim(); if (!fen) { alert("Plak eerst een FEN-code in het invoerveld."); return; }
+
+  let cleanFen = fen.replace(/\s+/g, '');
+  const match = cleanFen.match(/"([^"]+)"/);
+  if (match) { cleanFen = match[1]; } // Veilig uitgepakt als string, voorkomt array-typefout
+
+  const parts = cleanFen.toUpperCase().split(':');
+  let whitePieces = [], blackPieces = [];
+
+  parts.forEach(part => {
+    if (part.startsWith('W') && part.length > 1) whitePieces = part.substring(1).split(',');
+    if (part.startsWith('B') && part.length > 1) blackPieces = part.substring(1).split(',');
+  });
+
+  // Maak Sets aan voor razendsnelle O(1) lookups per veld
+  const whiteSet = new Set(whitePieces);
+  const blackSet = new Set(blackPieces);
+
+  // Bouw het lege basisbord op
+  buildBoard(parseInt(sizeSelect.value), false);
+
+  // Wis eventuele opstartschijven en plaats direct de juiste stukken via de Sets
+  boardContainer.querySelectorAll('.dark-tile').forEach(tile => {
+    const fNum = tile.dataset.fieldNumber;
+    const piece = tile.querySelector('.piece'); if (piece) piece.remove();
+
+    if (whiteSet.has('K' + fNum))       tile.insertAdjacentHTML('beforeend', getWKing());
+    else if (whiteSet.has(fNum))        tile.insertAdjacentHTML('beforeend', getWPiece());
+    else if (blackSet.has('K' + fNum))  tile.insertAdjacentHTML('beforeend', getBKing());
+    else if (blackSet.has(fNum))        tile.insertAdjacentHTML('beforeend', getBPiece());
+  });
+
+  initToolPanel();
+  field.value = "";
+}
+
+executeFenExport.addEventListener('click', () => {
+  const whitePieces = []; const blackPieces = [];
+
+  boardContainer.querySelectorAll('.dark-tile').forEach(tile => {
+    const fieldNum = tile.dataset.fieldNumber;
+    const piece = tile.querySelector('.piece');
+    if (!piece) return;
+
+    const type = piece.dataset.type;
+    if (type === 'W')  whitePieces.push(fieldNum);
+    if (type === 'WK') whitePieces.push('K' + fieldNum);
+    if (type === 'B')  blackPieces.push(fieldNum);
+    if (type === 'BK') blackPieces.push('K' + fieldNum);
+  });
+
+  // Numeriek sorteren (verwijdert de 'K' tijdelijk voor de berekening)
+  const sortFn = (a, b) => parseInt(a.replace('K','')) - parseInt(b.replace('K',''));
+  whitePieces.sort(sortFn);
+  blackPieces.sort(sortFn);
+
+  let fenString = "W";
+  if (whitePieces.length > 0) fenString += ":W" + whitePieces.join(',');
+  if (blackPieces.length > 0) fenString += ":B" + blackPieces.join(',');
+
+  const inputField = document.getElementById('fen-input-field');
+  if (inputField) { inputField.value = fenString; inputField.select(); }
+
+  navigator.clipboard.writeText(fenString).then(() => {
+    alert("FEN-code staat in het tekstvak én is gekopieerd naar je klembord!");
+  });
+});
+
+// EVENT LISTENERS
+const targetImportBtn = document.getElementById('import-fen-btn'); if (targetImportBtn) targetImportBtn.addEventListener('click',
+ executeFenImport);
+const targetInputField = document.getElementById('fen-input-field'); if (targetInputField) { targetInputField.addEventListener(
+'keydown', e => { if (e.key === 'Enter') executeFenImport(); }); }
+
+sizeSelect.addEventListener('change', e => { buildBoard(parseInt(e.target.value)); initToolPanel(); });
+flipBtn.addEventListener('click', () => boardHolder.classList.toggle('flipped'));
+clearBtn.addEventListener('click', () => { boardContainer.querySelectorAll('.piece').forEach(p => p.remove()); });
+resetBtn.addEventListener('click', () => { buildBoard(parseInt(sizeSelect.value)); initToolPanel(); });
+
+document.getElementById('tool-panel').addEventListener('click', (e) => {
+  const option = e.target.closest('.tool-option'); if (!option) return;
+  document.querySelectorAll('.tool-option').forEach(opt => opt.classList.remove('active')); option.classList.add('active');
+  activeTool = option.dataset.tool;
+});
+
+const formatMenuBtn = document.getElementById('format-menu-btn'); const formatMenuContent = document.getElementById(
+'format-menu-content');
+const tilesizeInput = document.getElementById('tilesize-input'); const piecesizeInput = document.getElementById('piecesize-input'
+);
+const boardborderInput = document.getElementById('boardborder-input');
+
+formatMenuBtn.addEventListener('click', (e) => { e.stopPropagation(); formatMenuContent.classList.toggle('open'); });
+document.addEventListener('click', () => { formatMenuContent.classList.remove('open'); });
+formatMenuContent.addEventListener('click', (e) => { e.stopPropagation(); });
+
+tilesizeInput.addEventListener('input', e => {
+  let cleanVal = e.target.value.replace(/[^0-9]/g, ''); e.target.value = cleanVal; let val = parseInt(cleanVal); if (isNaN(val)
+|| val < 15) return;
+  if (val > 150) val = 150; SETTINGS.tSize = val;
+  applyThemeColors(); // VOEG DEZE REGEL TOE: Dit dwingt de CSS om direct live mee te schalen!
+  buildBoard(parseInt(sizeSelect.value), true); initToolPanel();
+});
+tilesizeInput.addEventListener('focus', e => { e.target.select(); });
+
+piecesizeInput.addEventListener('input', e => {
+  let cleanVal = e.target.value.replace(/[^0-9]/g, ''); e.target.value = cleanVal; let val = parseInt(cleanVal); if (isNaN(val)
+|| val < 1) return;
+  if (val > 100) { val = 100; e.target.value = 100; } SETTINGS.pSize = val; refreshBoardPieces();
+});
+piecesizeInput.addEventListener('focus', e => { e.target.select(); });
+
+boardborderInput.addEventListener('input', e => {
+  let cleanVal = e.target.value.replace(/[^0-9]/g, ''); e.target.value = cleanVal; let val = parseInt(cleanVal); if (isNaN(val))
+return;
+  if (val > 40) { val = 40; e.target.value = 40; } SETTINGS.bBorder = val; applyThemeColors();
+});
+boardborderInput.addEventListener('focus', e => { e.target.select(); });
+
+document.querySelectorAll('.board-border-color').forEach(btn => {
+  btn.addEventListener('click', (e) => { activeBorderType = e.target.dataset.border; applyThemeColors(); });
+});
+
+themeSelectElement.addEventListener('change', () => { applyThemeColors(); refreshBoardPieces(); });
+document.querySelectorAll('input[name="style-select"]').forEach(radio => { radio.addEventListener('change', refreshBoardPieces);
+});
+
+saveBtn.addEventListener('click', () => {
+  const s = parseInt(sizeSelect.value); const canvas = generateBoardCanvas();
+  const link = document.createElement('a'); link.download = 'dambord_' + s + 'x' + s + '.png'; link.href = canvas.toDataURL(
+'image/png'); link.click();
+});
+
+// Genereer de Base64 data-URL van de canvas-afbeelding
+if (copyBtn) {
+  copyBtn.addEventListener('click', () => {
+   const canvas = generateBoardCanvas();
+   const base64DataUrl = canvas.toDataURL('image/png');
+  
+   navigator.clipboard.writeText(base64DataUrl).then(() => {
+     alert("Base64-code succesvol gekopieerd! Je kunt hem nu direct plakken in de adresbalk van de browser (Ctrl+V).");
+     }).catch(err => { 
+       alert("Kopiëren mislukt. Zorg dat je browser klembordtoestemming heeft."); 
+     });
+   });
+}
+
+// INITIALISATIE VOLGORDE
+applyThemeColors();
+initToolPanel();
+buildBoard(10);
+</script>
+</body>
+</html>
